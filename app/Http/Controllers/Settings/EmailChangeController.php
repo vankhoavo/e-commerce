@@ -20,8 +20,9 @@ class EmailChangeController
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($request->user()->id)],
         ])->validate();
 
-        $request->session()->put('pending_email', $data['email']);
-        $otp->send($request->user(), $data['email']);
+        $email = mb_strtolower(trim($data['email']));
+        $request->session()->put('pending_email', $email);
+        $otp->send($request->user(), $email);
 
         return to_route('email-change.edit')->with('status', 'email-change-code-sent');
     }
@@ -37,14 +38,25 @@ class EmailChangeController
         ]);
     }
 
+    public function resend(Request $request, EmailOtpService $otp): RedirectResponse
+    {
+        $email = (string) $request->session()->get('pending_email');
+        if ($email === '') {
+            return to_route('profile.edit');
+        }
+
+        $otp->send($request->user(), $email);
+        return back()->with('status', 'email-change-code-sent');
+    }
+
     public function verify(Request $request): RedirectResponse
     {
         $email = (string) $request->session()->get('pending_email');
         $data = Validator::make($request->all(), ['code' => ['required', 'digits:6']])->validate();
         $record = EmailVerificationCode::query()->where('user_id', $request->user()->id)->latest()->first();
 
-        if ($email === '' || ! $record || $record->email !== $email || $record->expired()) {
-            return back()->withErrors(['code' => 'Mã xác thực không hợp lệ hoặc đã hết hạn.']);
+        if ($email === '' || ! $record || $record->email !== $email || $record->verified_at || $record->expired()) {
+            return back()->withErrors(['code' => 'Mã xác thực không hợp lệ, đã được sử dụng hoặc đã hết hạn.']);
         }
         if ($record->attempts >= 5) {
             return back()->withErrors(['code' => 'Bạn đã nhập sai quá số lần cho phép. Vui lòng gửi mã mới.']);

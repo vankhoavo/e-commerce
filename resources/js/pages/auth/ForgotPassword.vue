@@ -1,66 +1,21 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 
-defineOptions({
-    layout: {
-        title: 'Forgot password',
-        description: 'Enter your email to receive a password reset link',
-    },
-});
-
-defineProps<{
-    status?: string;
-}>();
+defineOptions({ layout: { title: 'Khôi phục mật khẩu', description: 'Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.' } });
+defineProps<{ status?: string }>();
 </script>
 
 <template>
-    <Head title="Forgot password" />
-
-    <div
-        v-if="status"
-        class="mb-4 text-center text-sm font-medium text-green-600"
-    >
-        {{ status }}
-    </div>
-
-    <div class="space-y-6">
-        <Form v-bind="email.form()" v-slot="{ errors, processing }">
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    name="email"
-                    autocomplete="off"
-                    autofocus
-                    placeholder="email@example.com"
-                />
-                <InputError :message="errors.email" />
-            </div>
-
-            <div class="my-6 flex items-center justify-start">
-                <Button
-                    class="w-full"
-                    :disabled="processing"
-                    data-test="email-password-reset-link-button"
-                >
-                    <Spinner v-if="processing" />
-                    Email password reset link
-                </Button>
-            </div>
-        </Form>
-
-        <div class="text-muted-foreground space-x-1 text-center text-sm">
-            <span>Or, return to</span>
-            <TextLink :href="login()">log in</TextLink>
-        </div>
-    </div>
+    <Head title="Quên mật khẩu" />
+    <div class="forgot-intro mb-4"><div class="forgot-icon"><i class="bi bi-shield-lock-fill" /></div><div><h2 class="h5 fw-bold mb-1">Bạn quên mật khẩu?</h2><p class="text-secondary small mb-0">Đừng lo. Chúng tôi sẽ gửi hướng dẫn khôi phục đến email của bạn.</p></div></div>
+    <div v-if="status" class="alert alert-success border-0 rounded-3 small"><i class="bi bi-check-circle-fill me-2" />{{ status }}</div>
+    <Form v-bind="email.form()" v-slot="{ errors, processing }" class="vstack gap-3">
+        <div><label for="email" class="form-label fw-semibold">Địa chỉ email</label><div class="input-group input-group-lg"><span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-secondary" /></span><input id="email" type="email" name="email" class="form-control border-start-0" required autofocus autocomplete="email" placeholder="email@example.com" /></div><InputError :message="errors.email" /></div>
+        <button type="submit" class="btn btn-primary btn-lg w-100" :disabled="processing"><i v-if="!processing" class="bi bi-send me-2" />{{ processing ? 'Đang gửi...' : 'Gửi liên kết khôi phục' }}</button>
+    </Form>
+    <div class="forgot-help mt-4"><i class="bi bi-info-circle me-2" /><span>Kiểm tra cả thư mục Spam nếu bạn chưa thấy email.</span></div>
+    <div class="text-center auth-bottom mt-4"><Link :href="login()"><i class="bi bi-arrow-left me-1" />Quay lại đăng nhập</Link></div>
 </template>

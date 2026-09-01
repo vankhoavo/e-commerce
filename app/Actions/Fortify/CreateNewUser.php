@@ -6,6 +6,7 @@ use App\Actions\Teams\CreateTeam;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use App\Services\EmailOtpService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -14,15 +15,15 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules, ProfileValidationRules;
 
-    public function __construct(private CreateTeam $createTeam)
-    {
-        //
-    }
+    public function __construct(
+        private CreateTeam $createTeam,
+        private EmailOtpService $emailOtpService,
+    ) {}
 
     /**
      * Validate and create a newly registered user.
      *
-     * @param  array<string, string>  $input
+     * @param array<string, string> $input
      */
     public function create(array $input): User
     {
@@ -31,7 +32,7 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        return DB::transaction(function () use ($input) {
+        $user = DB::transaction(function () use ($input): User {
             $user = User::create([
                 'name' => $input['name'],
                 'email' => $input['email'],
@@ -42,5 +43,11 @@ class CreateNewUser implements CreatesNewUsers
 
             return $user;
         });
+
+        // Registration never marks the address as verified. A fresh OTP is
+        // issued so the customer can prove ownership of the mailbox.
+        $this->emailOtpService->send($user, $user->email);
+
+        return $user;
     }
 }

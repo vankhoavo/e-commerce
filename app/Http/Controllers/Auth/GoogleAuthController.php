@@ -59,7 +59,7 @@ class GoogleAuthController
             'grant_type' => 'authorization_code',
         ])->throw();
 
-        $accessToken = $tokenResponse->string('access_token');
+        $accessToken = (string) $tokenResponse->json('access_token');
         abort_unless($accessToken !== '', 422, 'Không lấy được mã truy cập từ Google.');
 
         $googleUser = Http::withToken($accessToken)

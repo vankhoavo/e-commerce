@@ -1,9 +1,7 @@
 import inertia from '@inertiajs/vite';
 import { wayfinder } from '@laravel/vite-plugin-wayfinder';
-import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
 export default defineConfig({
@@ -11,14 +9,8 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
         }),
         inertia(),
-        tailwindcss(),
         vue({
             template: {
                 transformAssetUrls: {
@@ -33,13 +25,7 @@ export default defineConfig({
     ]),
     server: {
         watch: {
-            ignored: [
-                '**/.agents/**',
-                '**/.claude/**',
-                '**/.cursor/**',
-                '**/.junie/**',
-                '**/vendor/**',
-            ],
+            ignored: ['**/.agents/**', '**/.claude/**', '**/.cursor/**', '**/.junie/**', '**/vendor/**'],
         },
     },
     lint: {
@@ -48,7 +34,6 @@ export default defineConfig({
             'node_modules/**',
             'public/**',
             'bootstrap/ssr/**',
-            'tailwind.config.js',
             'resources/js/actions/**',
             'resources/js/components/ui/*',
             'resources/js/routes/**',
@@ -66,15 +51,6 @@ export default defineConfig({
         semi: true,
         singleAttributePerLine: false,
         htmlWhitespaceSensitivity: 'css',
-        ignorePatterns: [
-            '.github/**',
-            'composer.json',
-            'resources/js/components/ui/*',
-            'resources/views/mail/*',
-        ],
-        sortTailwindcss: {
-            functions: ['clsx', 'cn', 'cva'],
-            entryPoint: 'resources/css/app.css',
-        },
+        ignorePatterns: ['.github/**', 'resources/js/components/ui/*', 'resources/views/mail/*'],
     },
 });

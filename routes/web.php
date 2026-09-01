@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Home')->name('home');
@@ -13,9 +14,9 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
     ->middleware('guest')
     ->name('google.callback');
 
-Route::middleware(['auth', 'verified'])->group(function (): void {
-    Route::inertia('/dashboard', 'Dashboard')->name('dashboard');
-});
+Route::get('/dashboard', DashboardController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware(['auth', 'admin'])
     ->prefix('admin')

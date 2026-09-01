@@ -8,44 +8,21 @@ use Illuminate\Validation\Rule;
 
 trait ProfileValidationRules
 {
-    /**
-     * Get the validation rules used to validate user profiles.
-     *
-     * @return array<string, array<int, ValidationRule|array<mixed>|string>>
-     */
+    /** @return array<string, array<int, ValidationRule|array<mixed>|string>> */
     protected function profileRules(?int $userId = null): array
     {
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\s().-]{8,20}$/'],
+            'birth_date' => ['nullable', 'date', 'before:today'],
         ];
     }
 
-    /**
-     * Get the validation rules used to validate user names.
-     *
-     * @return array<int, ValidationRule|array<mixed>|string>
-     */
-    protected function nameRules(): array
-    {
-        return ['required', 'string', 'max:255'];
-    }
+    protected function nameRules(): array { return ['required', 'string', 'max:255']; }
 
-    /**
-     * Get the validation rules used to validate user emails.
-     *
-     * @return array<int, ValidationRule|array<mixed>|string>
-     */
     protected function emailRules(?int $userId = null): array
     {
-        return [
-            'required',
-            'string',
-            'email',
-            'max:255',
-            $userId === null
-                ? Rule::unique(User::class)
-                : Rule::unique(User::class)->ignore($userId),
-        ];
+        return ['required', 'string', 'email', 'max:255', $userId === null ? Rule::unique(User::class) : Rule::unique(User::class)->ignore($userId)];
     }
 }

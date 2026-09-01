@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 class GoogleAuthController
 {
@@ -84,16 +84,15 @@ class GoogleAuthController
                 'name' => (string) (data_get($googleUser, 'name') ?: Str::before($email, '@')),
                 'email' => $email,
                 'password' => Str::random(64),
-                'role' => 'customer',
+                'role' => UserRole::CUSTOMER,
                 'is_active' => true,
                 'avatar' => data_get($googleUser, 'picture'),
                 'google_id' => $googleId,
-                'email_verified_at' => now(),
             ]);
+
+            $user->forceFill(['email_verified_at' => now()])->save();
         } else {
-            if (! $user->is_active) {
-                throw new RuntimeException('Tài khoản đã bị khóa.');
-            }
+            abort_unless($user->is_active, 403, 'Tài khoản đã bị khóa.');
 
             $user->forceFill([
                 'google_id' => $googleId,

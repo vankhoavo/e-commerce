@@ -23,10 +23,11 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property UserRole $role
  * @property bool $is_active
  * @property string|null $avatar
+ * @property string|null $google_id
  * @property Carbon|null $email_verified_at
  * @property string $password
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'is_active', 'avatar', 'current_team_id'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'is_active', 'avatar', 'google_id', 'current_team_id'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -46,11 +47,11 @@ class User extends Authenticatable implements PasskeyUser
 
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::ADMIN;
+        return $this->is_active && $this->role === UserRole::ADMIN;
     }
 
     public function isStaff(): bool
     {
-        return in_array($this->role, [UserRole::ADMIN, UserRole::STAFF], true);
+        return $this->is_active && in_array($this->role, [UserRole::ADMIN, UserRole::STAFF], true);
     }
 }

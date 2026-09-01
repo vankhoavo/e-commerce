@@ -13,6 +13,10 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
     ->middleware('guest')
     ->name('google.callback');
 
+Route::middleware(['auth', 'verified'])->group(function (): void {
+    Route::inertia('/dashboard', 'Dashboard')->name('dashboard');
+});
+
 Route::middleware(['auth', 'admin'])
     ->prefix('admin')
     ->name('admin.')

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Settings, UserRound, ShieldCheck, UsersRound, Palette, ChevronRight } from 'lucide-vue-next';
+import { Settings, UserRound, ShieldCheck, UsersRound, Palette, ChevronRight } from '@lucide/vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
+import SettingsNav from '@/components/SettingsNav.vue';
 import type { BreadcrumbItem } from '@/types';
 
 const { breadcrumbs = [] } = defineProps<{
@@ -9,6 +10,10 @@ const { breadcrumbs = [] } = defineProps<{
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <slot />
+        <div v-if="$page.url.startsWith('/settings')" class="settings-page-shell">
+            <SettingsNav />
+            <main class="settings-page-content"><slot /></main>
+        </div>
+        <slot v-else />
     </AppLayout>
 </template>

@@ -45,6 +45,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/teams/{team}/invitations', [TeamInvitationController::class, 'store'])->name('teams.invitations.store');
         Route::delete('settings/teams/{team}/invitations/{invitation}', [TeamInvitationController::class, 'destroy'])->name('teams.invitations.destroy');
     });
+
+    Route::post('invitations/{invitation}/accept', [TeamInvitationController::class, 'accept'])
+        ->name('invitations.accept');
+
+    Route::delete('invitations/{invitation}/decline', [TeamInvitationController::class, 'decline'])
+        ->name('invitations.decline');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

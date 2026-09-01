@@ -1,73 +1,16 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
+const search = ref('');
 </script>
-
 <template>
     <div class="min-vh-100 d-flex flex-column">
-        <nav class="navbar navbar-expand-lg shop-navbar sticky-top">
-            <div class="container py-2">
-                <Link href="/" class="shop-brand">
-                    <span class="shop-brand-mark"><i class="bi bi-cpu-fill" /></span>
-                    <span>TechStore</span>
-                </Link>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#clientNavigation" aria-label="Mở menu">
-                    <span class="navbar-toggler-icon" />
-                </button>
-                <div id="clientNavigation" class="collapse navbar-collapse">
-                    <div class="navbar-nav mx-lg-auto gap-lg-2">
-                        <Link href="/" class="nav-link shop-nav-link">Trang chủ</Link>
-                        <Link href="/products" class="nav-link shop-nav-link">Laptop</Link>
-                        <Link href="/products?category=components" class="nav-link shop-nav-link">Linh kiện</Link>
-                        <Link href="/products?category=accessories" class="nav-link shop-nav-link">Phụ kiện</Link>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
-                        <Link href="/cart" class="btn btn-light position-relative" aria-label="Giỏ hàng">
-                            <i class="bi bi-cart3 fs-5" />
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">0</span>
-                        </Link>
-                        <Link href="/login" class="btn btn-outline-primary px-3">Đăng nhập</Link>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
-        <main class="flex-grow-1"><slot /></main>
-
-        <footer class="bg-dark text-white mt-5">
-            <div class="container py-5">
-                <div class="row g-4">
-                    <div class="col-lg-5">
-                        <div class="shop-brand text-white mb-3">
-                            <span class="shop-brand-mark"><i class="bi bi-cpu-fill" /></span>
-                            <span>TechStore</span>
-                        </div>
-                        <p class="text-white-50 mb-0">Nền tảng bán laptop và linh kiện điện tử hiện đại, an toàn và dễ sử dụng.</p>
-                    </div>
-                    <div class="col-6 col-lg-2">
-                        <h6 class="fw-bold">Mua sắm</h6>
-                        <div class="d-grid gap-2 text-white-50 small">
-                            <Link href="/products">Sản phẩm</Link>
-                            <Link href="/cart">Giỏ hàng</Link>
-                            <Link href="/orders">Đơn hàng</Link>
-                        </div>
-                    </div>
-                    <div class="col-6 col-lg-2">
-                        <h6 class="fw-bold">Tài khoản</h6>
-                        <div class="d-grid gap-2 text-white-50 small">
-                            <Link href="/login">Đăng nhập</Link>
-                            <Link href="/register">Đăng ký</Link>
-                            <Link href="/profile">Hồ sơ</Link>
-                        </div>
-                    </div>
-                    <div class="col-lg-3">
-                        <h6 class="fw-bold">Hỗ trợ</h6>
-                        <p class="text-white-50 small mb-2">Hotline: 1900 0000</p>
-                        <p class="text-white-50 small mb-0">Email: support@techstore.local</p>
-                    </div>
-                </div>
-                <hr class="border-secondary my-4" />
-                <div class="small text-white-50">© {{ new Date().getFullYear() }} TechStore. All rights reserved.</div>
-            </div>
-        </footer>
+        <nav class="navbar navbar-expand-lg shop-navbar sticky-top"><div class="container py-2">
+            <Link href="/" class="shop-brand"><span class="shop-brand-mark"><i class="bi bi-cpu-fill"/></span><span>TechStore</span></Link>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#clientNavigation" aria-label="Mở menu"><i class="bi bi-list fs-2"/></button>
+            <div id="clientNavigation" class="collapse navbar-collapse"><div class="navbar-nav mx-lg-auto gap-lg-1"><Link href="/" class="nav-link shop-nav-link">Trang chủ</Link><Link href="/products?category=laptop" class="nav-link shop-nav-link">Laptop</Link><Link href="/products?category=components" class="nav-link shop-nav-link">Linh kiện</Link><Link href="/products?category=monitor" class="nav-link shop-nav-link">Màn hình</Link><Link href="/products?category=accessories" class="nav-link shop-nav-link">Phụ kiện</Link></div><div class="d-flex align-items-center gap-2 mt-3 mt-lg-0"><form class="nav-search d-none d-xl-flex" @submit.prevent="$inertia.visit(`/products?search=${encodeURIComponent(search)}`)"><i class="bi bi-search"/><input v-model="search" placeholder="Tìm sản phẩm..." aria-label="Tìm sản phẩm"/></form><Link href="/cart" class="btn btn-light position-relative" aria-label="Giỏ hàng"><i class="bi bi-cart3 fs-5"/><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">0</span></Link><Link href="/login" class="btn btn-outline-primary px-3">Đăng nhập</Link><Link href="/register" class="btn btn-primary px-3 d-none d-md-inline-block">Đăng ký</Link></div></div>
+        </div></nav>
+        <main class="flex-grow-1"><slot/></main>
+        <footer class="bg-dark text-white mt-5"><div class="container py-5"><div class="row g-4"><div class="col-lg-5"><div class="shop-brand text-white mb-3"><span class="shop-brand-mark"><i class="bi bi-cpu-fill"/></span><span>TechStore</span></div><p class="text-white-50 mb-0">Nền tảng bán laptop và linh kiện điện tử hiện đại, an toàn và dễ sử dụng.</p></div><div class="col-6 col-lg-2"><h6 class="fw-bold">Mua sắm</h6><div class="d-grid gap-2 text-white-50 small"><Link href="/products">Sản phẩm</Link><Link href="/cart">Giỏ hàng</Link><Link href="/orders">Đơn hàng</Link></div></div><div class="col-6 col-lg-2"><h6 class="fw-bold">Tài khoản</h6><div class="d-grid gap-2 text-white-50 small"><Link href="/login">Đăng nhập</Link><Link href="/register">Đăng ký</Link><Link href="/profile">Hồ sơ</Link></div></div><div class="col-lg-3"><h6 class="fw-bold">Hỗ trợ</h6><p class="text-white-50 small mb-2">Hotline: 1900 0000</p><p class="text-white-50 small mb-0">Email: support@techstore.local</p></div></div><hr class="border-secondary my-4"/><div class="small text-white-50">© {{ new Date().getFullYear() }} TechStore. All rights reserved.</div></div></footer>
     </div>
 </template>

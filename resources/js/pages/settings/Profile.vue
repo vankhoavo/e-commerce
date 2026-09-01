@@ -1,208 +1,88 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+import { ChevronRight, LockKeyhole, Palette, ShieldCheck, UsersRound } from '@lucide/vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import DeleteUser from '@/components/DeleteUser.vue';
 import InputError from '@/components/InputError.vue';
+import PasswordInput from '@/components/PasswordInput.vue';
+import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import ManagePasskeys from '@/components/ManagePasskeys.vue';
+import ManageTwoFactor from '@/components/ManageTwoFactor.vue';
+import CreateTeamModal from '@/components/CreateTeamModal.vue';
 import { computed } from 'vue';
 
+type Props = {
+    passwordRules: string;
+    canManageTwoFactor: boolean;
+    canManagePasskeys: boolean;
+    twoFactorEnabled: boolean;
+    requiresConfirmation: boolean;
+    passkeys: any[];
+    teams: any[];
+};
+
+const props = defineProps<Props>();
 const page = usePage();
 const user = computed(() => page.props.auth.user as any);
 const roleLabel = computed(() => {
     const role = user.value?.role?.label ?? user.value?.role;
-    const labels: Record<string, string> = {
-        customer: 'Khách hàng',
-        admin: 'Quản trị viên',
-        staff: 'Nhân viên',
-        user: 'Người dùng',
-    };
+    const labels: Record<string, string> = { customer: 'Khách hàng', admin: 'Quản trị viên', staff: 'Nhân viên', user: 'Người dùng' };
     return labels[String(role ?? '').toLowerCase()] ?? role ?? 'Khách hàng';
 });
 </script>
 
 <template>
-    <Head title="Thông tin cá nhân" />
-    <div class="profile-page">
-        <div class="profile-header">
-            <div>
-                <span class="section-kicker">TÀI KHOẢN CỦA BẠN</span>
-                <h1>Thông tin cá nhân</h1>
-                <p>Quản lý thông tin cá nhân và bảo mật tài khoản tại TechStore.</p>
+    <Head title="Cài đặt tài khoản" />
+    <div class="profile-page settings-dashboard">
+        <section id="profile" class="settings-section profile-section">
+            <div class="profile-header">
+                <div><span class="section-kicker">TÀI KHOẢN CỦA BẠN</span><h1>Thông tin cá nhân</h1><p>Quản lý thông tin cá nhân và bảo mật tài khoản tại TechStore.</p></div>
+                <Form action="/logout" method="post"><button type="submit" class="btn btn-outline-danger profile-logout"><i class="bi bi-box-arrow-right me-2" />Đăng xuất</button></Form>
             </div>
-            <Form action="/logout" method="post">
-                <button type="submit" class="btn btn-outline-danger profile-logout">
-                    <i class="bi bi-box-arrow-right me-2" />Đăng xuất
-                </button>
-            </Form>
-        </div>
+            <div v-if="page.props.status" class="profile-alert"><i class="bi bi-check-circle-fill" /><span v-if="page.props.status === 'profile-updated'">Thông tin cá nhân đã được cập nhật.</span><span v-else-if="page.props.status === 'email-changed'">Email mới đã được xác thực và cập nhật thành công.</span><span v-else-if="page.props.status === 'email-verified'">Email của bạn đã được xác thực thành công.</span><span v-else>Thao tác đã được thực hiện thành công.</span></div>
 
-        <div v-if="page.props.status" class="profile-alert">
-            <i class="bi bi-check-circle-fill" />
-            <span v-if="page.props.status === 'profile-updated'">Thông tin cá nhân đã được cập nhật.</span>
-            <span v-else-if="page.props.status === 'email-changed'">Email mới đã được xác thực và cập nhật thành công.</span>
-            <span v-else-if="page.props.status === 'email-verified'">Email của bạn đã được xác thực thành công.</span>
-            <span v-else>Thao tác đã được thực hiện thành công.</span>
-        </div>
+            <div class="row g-4">
+                <div class="col-xl-4"><div class="profile-card profile-summary h-100">
+                    <div class="profile-summary-top"><div class="profile-avatar"><img v-if="user.avatar" :src="user.avatar" alt="Ảnh đại diện"><i v-else class="bi bi-person-fill" /></div></div>
+                    <h2>{{ user.name }}</h2><p class="profile-email">{{ user.email }}</p>
+                    <div class="profile-status-row"><span class="profile-verified" :class="user.email_verified_at ? 'verified' : 'unverified'"><i :class="['bi', user.email_verified_at ? 'bi-patch-check-fill' : 'bi-exclamation-circle-fill']" />{{ user.email_verified_at ? 'Email đã xác thực' : 'Chưa xác thực Email' }}</span><Link v-if="!user.email_verified_at" href="/verify-email-otp" class="verify-email-btn">Xác thực ngay <i class="bi bi-arrow-right" /></Link></div>
+                    <div class="profile-summary-list mt-4"><div><span class="profile-summary-icon"><i class="bi bi-person-badge" /></span><span><small>Vai trò</small><strong>{{ roleLabel }}</strong></span></div><div><span class="profile-summary-icon"><i class="bi bi-shield-check" /></span><span><small>Trạng thái tài khoản</small><strong>{{ user.is_active ? 'Đang hoạt động' : 'Đã khóa' }}</strong></span></div></div>
+                </div></div>
 
-        <div class="row g-4">
-            <div class="col-xl-4">
-                <div class="profile-card profile-summary h-100">
-                    <div class="profile-summary-top">
-                        <div class="profile-avatar">
-                            <img v-if="user.avatar" :src="user.avatar" alt="Ảnh đại diện">
-                            <i v-else class="bi bi-person-fill" />
-                        </div>
-                    </div>
-                    <h2>{{ user.name }}</h2>
-                    <p class="profile-email">{{ user.email }}</p>
-                    <div class="profile-status-row">
-                        <span class="profile-verified" :class="user.email_verified_at ? 'verified' : 'unverified'">
-                            <i :class="['bi', user.email_verified_at ? 'bi-patch-check-fill' : 'bi-exclamation-circle-fill']" />
-                            {{ user.email_verified_at ? 'Email đã xác thực' : 'Chưa xác thực Email' }}
-                        </span>
-                        <Link v-if="!user.email_verified_at" href="/verify-email-otp" class="verify-email-btn">
-                            Xác thực ngay <i class="bi bi-arrow-right" />
-                        </Link>
-                    </div>
-
-                    <div class="profile-summary-list mt-4">
-                        <div>
-                            <span class="profile-summary-icon"><i class="bi bi-person-badge" /></span>
-                            <span><small>Vai trò</small><strong>{{ roleLabel }}</strong></span>
-                        </div>
-                        <div>
-                            <span class="profile-summary-icon"><i class="bi bi-shield-check" /></span>
-                            <span><small>Trạng thái tài khoản</small><strong>{{ user.is_active ? 'Đang hoạt động' : 'Đã khóa' }}</strong></span>
-                        </div>
-                    </div>
+                <div class="col-xl-8">
+                    <section class="profile-card"><div class="profile-card-title"><span class="profile-title-icon"><i class="bi bi-person-lines-fill" /></span><div><h2>Thông tin cơ bản</h2><p>Cập nhật họ tên, ngày sinh và số điện thoại.</p></div></div>
+                        <Form v-bind="ProfileController.update.form()" v-slot="{ errors, processing }" class="row g-3 mt-1"><div class="col-12"><label class="form-label">Họ và tên</label><input name="name" class="form-control form-control-lg" :value="user.name" required autocomplete="name"><InputError :message="errors.name" /></div><div class="col-md-6"><label class="form-label">Ngày tháng năm sinh</label><input name="birth_date" type="date" class="form-control form-control-lg" :value="user.birth_date ? String(user.birth_date).slice(0,10) : ''"><InputError :message="errors.birth_date" /></div><div class="col-md-6"><label class="form-label">Số điện thoại</label><input name="phone" type="tel" class="form-control form-control-lg" :value="user.phone ?? ''" placeholder="09xxxxxxxx" autocomplete="tel"><InputError :message="errors.phone" /></div><div class="col-12 pt-2"><button class="btn btn-primary profile-save" :disabled="processing"><i class="bi bi-check2-circle me-2" />{{ processing ? 'Đang lưu...' : 'Lưu thay đổi' }}</button></div></Form>
+                    </section>
+                    <section class="profile-card email-change-card mt-4"><div class="email-change-head"><div class="profile-title-icon email-icon"><i class="bi bi-envelope-at-fill" /></div><div><span class="section-kicker">BẢO MẬT EMAIL</span><h2>Địa chỉ Email</h2><p>Email hiện tại được dùng để đăng nhập và khôi phục tài khoản.</p></div></div><div class="current-email-box"><div class="email-status-icon"><i class="bi bi-envelope-check" /></div><div class="flex-grow-1"><small>Email hiện tại</small><strong>{{ user.email }}</strong></div><span class="email-status-badge" :class="user.email_verified_at ? 'verified' : 'unverified'"><i :class="['bi', user.email_verified_at ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill']" />{{ user.email_verified_at ? 'Đã xác thực' : 'Chưa xác thực' }}</span></div><div class="email-change-divider"><span>Đổi địa chỉ Email</span></div><Form action="/settings/email/request" method="post" class="row g-3" v-slot="{ errors, processing }"><div class="col-lg-8"><label class="form-label">Email mới</label><div class="input-group input-group-lg"><span class="input-group-text"><i class="bi bi-envelope" /></span><input name="email" type="email" class="form-control" placeholder="email-moi@example.com" required autocomplete="email"></div><InputError :message="errors.email" /></div><div class="col-lg-4 d-flex align-items-end"><button class="btn btn-primary btn-lg w-100" :disabled="processing"><i class="bi bi-shield-check me-2" />{{ processing ? 'Đang gửi...' : 'Gửi mã xác thực' }}</button></div></Form><div class="email-security-note"><i class="bi bi-info-circle-fill" /><span>Email mới <strong>chưa được thay đổi ở bước này</strong>. Hệ thống chỉ cập nhật sau khi nhập đúng OTP 6 số được gửi đến Email mới.</span></div></section>
                 </div>
             </div>
+            <div class="mt-4"><DeleteUser /></div>
+        </section>
 
-            <div class="col-xl-8">
-                <section class="profile-card">
-                    <div class="profile-card-title">
-                        <span class="profile-title-icon"><i class="bi bi-person-lines-fill" /></span>
-                        <div><h2>Thông tin cơ bản</h2><p>Cập nhật họ tên, ngày sinh và số điện thoại.</p></div>
-                    </div>
-                    <Form v-bind="ProfileController.update.form()" v-slot="{ errors, processing }" class="row g-3 mt-1">
-                        <div class="col-12">
-                            <label class="form-label">Họ và tên</label>
-                            <input name="name" class="form-control form-control-lg" :value="user.name" required autocomplete="name">
-                            <InputError :message="errors.name" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Ngày tháng năm sinh</label>
-                            <input name="birth_date" type="date" class="form-control form-control-lg" :value="user.birth_date ? String(user.birth_date).slice(0,10) : ''">
-                            <InputError :message="errors.birth_date" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Số điện thoại</label>
-                            <input name="phone" type="tel" class="form-control form-control-lg" :value="user.phone ?? ''" placeholder="09xxxxxxxx" autocomplete="tel">
-                            <InputError :message="errors.phone" />
-                        </div>
-                        <div class="col-12 pt-2">
-                            <button class="btn btn-primary profile-save" :disabled="processing">
-                                <i class="bi bi-check2-circle me-2" />{{ processing ? 'Đang lưu...' : 'Lưu thay đổi' }}
-                            </button>
-                        </div>
-                    </Form>
-                </section>
-
-                <section class="profile-card email-change-card mt-4">
-                    <div class="email-change-head">
-                        <div class="profile-title-icon email-icon"><i class="bi bi-envelope-at-fill" /></div>
-                        <div><span class="section-kicker">BẢO MẬT EMAIL</span><h2>Địa chỉ Email</h2><p>Email hiện tại được dùng để đăng nhập và khôi phục tài khoản.</p></div>
-                    </div>
-                    <div class="current-email-box">
-                        <div class="email-status-icon"><i class="bi bi-envelope-check" /></div>
-                        <div class="flex-grow-1"><small>Email hiện tại</small><strong>{{ user.email }}</strong></div>
-                        <span class="email-status-badge" :class="user.email_verified_at ? 'verified' : 'unverified'">
-                            <i :class="['bi', user.email_verified_at ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill']" />
-                            {{ user.email_verified_at ? 'Đã xác thực' : 'Chưa xác thực' }}
-                        </span>
-                    </div>
-                    <div class="email-change-divider"><span>Đổi địa chỉ Email</span></div>
-                    <Form action="/settings/email/request" method="post" class="row g-3" v-slot="{ errors, processing }">
-                        <div class="col-lg-8">
-                            <label class="form-label">Email mới</label>
-                            <div class="input-group input-group-lg">
-                                <span class="input-group-text"><i class="bi bi-envelope" /></span>
-                                <input name="email" type="email" class="form-control" placeholder="email-moi@example.com" required autocomplete="email">
-                            </div>
-                            <InputError :message="errors.email" />
-                        </div>
-                        <div class="col-lg-4 d-flex align-items-end">
-                            <button class="btn btn-primary btn-lg w-100" :disabled="processing">
-                                <i class="bi bi-shield-check me-2" />{{ processing ? 'Đang gửi...' : 'Gửi mã xác thực' }}
-                            </button>
-                        </div>
-                    </Form>
-                    <div class="email-security-note">
-                        <i class="bi bi-info-circle-fill" />
-                        <span>Email mới <strong>chưa được thay đổi ở bước này</strong>. Hệ thống chỉ cập nhật sau khi bạn nhập đúng OTP 6 số được gửi đến Email mới.</span>
-                    </div>
-                </section>
+        <section id="security" class="settings-section dashboard-section">
+            <div class="dashboard-section-heading"><div class="dashboard-section-icon security-icon"><ShieldCheck :size="22" /></div><div><span class="section-kicker">BẢO MẬT TÀI KHOẢN</span><h2>Bảo mật</h2><p>Bảo vệ tài khoản bằng mật khẩu mạnh và các lớp xác thực bổ sung.</p></div></div>
+            <div class="dashboard-card password-card"><div class="dashboard-card-head"><div class="mini-icon"><LockKeyhole :size="19" /></div><div><h3>Đổi mật khẩu</h3><p>Nên sử dụng mật khẩu dài, khó đoán và không dùng lại ở nơi khác.</p></div></div>
+                <Form v-bind="SecurityController.update.form()" :options="{ preserveScroll: true }" reset-on-success :reset-on-error="['password','password_confirmation','current_password']" v-slot="{ errors, processing }" class="password-form"><div class="row g-3"><div class="col-12"><label class="form-label">Mật khẩu hiện tại</label><PasswordInput id="current_password" name="current_password" class="form-control form-control-lg" autocomplete="current-password" placeholder="Nhập mật khẩu hiện tại" /><InputError :message="errors.current_password" /></div><div class="col-md-6"><label class="form-label">Mật khẩu mới</label><PasswordInput id="password" name="password" class="form-control form-control-lg" autocomplete="new-password" placeholder="Nhập mật khẩu mới" :passwordrules="props.passwordRules" /><InputError :message="errors.password" /></div><div class="col-md-6"><label class="form-label">Xác nhận mật khẩu</label><PasswordInput id="password_confirmation" name="password_confirmation" class="form-control form-control-lg" autocomplete="new-password" placeholder="Nhập lại mật khẩu" :passwordrules="props.passwordRules" /><InputError :message="errors.password_confirmation" /></div></div><div class="password-actions"><div class="security-tip"><i class="bi bi-lightbulb-fill" /><span>Mật khẩu mạnh nên có chữ hoa, chữ thường, số và ký tự đặc biệt.</span></div><button class="btn btn-primary profile-save" :disabled="processing"><i class="bi bi-shield-check me-2" />{{ processing ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}</button></div></Form>
             </div>
-        </div>
+            <ManageTwoFactor v-if="props.canManageTwoFactor" :canManageTwoFactor="props.canManageTwoFactor" :requiresConfirmation="props.requiresConfirmation" :twoFactorEnabled="props.twoFactorEnabled" />
+            <ManagePasskeys v-if="props.canManagePasskeys" :canManagePasskeys="props.canManagePasskeys" :passkeys="props.passkeys" />
+        </section>
 
-        <div class="mt-4"><DeleteUser /></div>
+        <section id="teams" class="settings-section dashboard-section">
+            <div class="dashboard-section-heading"><div class="dashboard-section-icon teams-icon"><UsersRound :size="22" /></div><div><span class="section-kicker">KHÔNG GIAN LÀM VIỆC</span><h2>Nhóm</h2><p>Quản lý các nhóm mà bạn đang tham gia và nhóm cá nhân của mình.</p></div><CreateTeamModal><button class="btn btn-primary section-action"><i class="bi bi-plus-lg me-2" />Tạo nhóm mới</button></CreateTeamModal></div>
+            <div class="teams-grid" v-if="props.teams.length"><div v-for="team in props.teams" :key="team.id" class="team-card"><div class="team-avatar"><UsersRound :size="20" /></div><div class="team-main"><div class="team-name-row"><h3>{{ team.name }}</h3><span v-if="team.isPersonal" class="team-badge">Cá nhân</span></div><p>{{ team.roleLabel ?? team.role ?? 'Thành viên' }}</p></div><Link v-if="team.slug" :href="`/teams/${team.slug}`" class="team-open"><ChevronRight :size="18" /></Link></div></div>
+            <div v-else class="empty-dashboard"><UsersRound :size="30" /><h3>Chưa có nhóm</h3><p>Bạn chưa tham gia nhóm nào. Hãy tạo nhóm đầu tiên để bắt đầu.</p></div>
+        </section>
+
+        <section id="appearance" class="settings-section dashboard-section appearance-section">
+            <div class="dashboard-section-heading"><div class="dashboard-section-icon appearance-icon"><Palette :size="22" /></div><div><span class="section-kicker">TRẢI NGHIỆM HIỂN THỊ</span><h2>Giao diện</h2><p>Chọn cách TechStore hiển thị trên thiết bị của bạn.</p></div></div>
+            <div class="appearance-card"><div class="appearance-preview"><div class="preview-top"><span></span><span></span><span></span></div><div class="preview-body"><div class="preview-sidebar"></div><div class="preview-content"><div></div><div></div><div></div></div></div></div><div class="appearance-controls"><div class="dashboard-card-head"><div class="mini-icon appearance-mini"><Palette :size="19" /></div><div><h3>Chế độ hiển thị</h3><p>Thay đổi sáng, tối hoặc tự động theo hệ thống.</p></div></div><AppearanceTabs /><div class="appearance-note"><i class="bi bi-stars" /><span>Lựa chọn của bạn sẽ được lưu tự động và áp dụng ngay.</span></div></div></div>
+        </section>
     </div>
 </template>
 
-<style>
-.profile-summary-top {
-    display: flex;
-    justify-content: center;
-    margin: -30px -24px 22px;
-    padding: 28px 24px 22px;
-    border-bottom: 1px solid #edf0f4;
-    border-radius: 22px 22px 0 0;
-    background: linear-gradient(145deg, #eff6ff 0%, #f8f5ff 100%);
-}
-.profile-avatar {
-    display: grid;
-    width: 86px;
-    height: 86px;
-    place-items: center;
-    overflow: hidden;
-    border: 4px solid #fff;
-    border-radius: 24px;
-    color: #fff;
-    background: linear-gradient(135deg,#2563eb,#7c3aed);
-    font-size: 2.35rem;
-    box-shadow: 0 12px 28px rgba(37,99,235,.18);
-}
-.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.profile-status-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-}
-.verify-email-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 10px;
-    border: 1px solid #bfdbfe;
-    border-radius: 9px;
-    color: #1d4ed8;
-    background: #eff6ff;
-    font-size: .68rem;
-    font-weight: 800;
-}
-.verify-email-btn:hover { color: #1e40af; background: #dbeafe; }
-.profile-summary-icon {
-    display: grid;
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-    place-items: center;
-    border-radius: 10px;
-    color: #2563eb;
-    background: #eff6ff;
-}
-.profile-summary-list > div { padding: 10px !important; }
-.profile-summary-list > div > span:last-child { min-width: 0; }
+<style scoped>
+.settings-dashboard{display:block}.settings-section{scroll-margin-top:24px;margin-bottom:58px}.profile-section{padding-top:0}.dashboard-section{padding-top:8px}.dashboard-section-heading{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:4px 2px}.dashboard-section-heading>div:nth-child(2){flex:1}.dashboard-section-heading h2{margin:2px 0 3px;color:#101828;font-size:1.65rem;font-weight:850;letter-spacing:-.035em}.dashboard-section-heading p{margin:0;color:#667085;font-size:.82rem}.dashboard-section-icon{display:grid;width:50px;height:50px;flex:0 0 50px;place-items:center;border-radius:15px}.security-icon{color:#2563eb;background:#eff6ff}.teams-icon{color:#7c3aed;background:#f5f3ff}.appearance-icon{color:#d97706;background:#fffbeb}.section-action{margin-left:auto;border-radius:11px;white-space:nowrap;font-weight:750}.dashboard-card,.appearance-card{border:1px solid #e4e7ec;border-radius:22px;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.055)}.dashboard-card{padding:24px}.dashboard-card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:20px}.dashboard-card-head h3{margin:1px 0 3px;color:#101828;font-size:1rem;font-weight:850}.dashboard-card-head p{margin:0;color:#98a2b3;font-size:.75rem;line-height:1.5}.mini-icon{display:grid;width:42px;height:42px;flex:0 0 42px;place-items:center;border-radius:12px;color:#2563eb;background:#eff6ff}.appearance-mini{color:#d97706;background:#fffbeb}.password-form .form-label{color:#344054;font-size:.76rem;font-weight:800}.password-actions{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:18px}.security-tip{display:flex;align-items:center;gap:8px;color:#667085;font-size:.72rem}.security-tip i{color:#f59e0b}.teams-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.team-card{display:flex;align-items:center;gap:12px;padding:16px;border:1px solid #e4e7ec;border-radius:17px;background:#fff;transition:.18s ease}.team-card:hover{border-color:#bfdbfe;box-shadow:0 8px 22px rgba(37,99,235,.07);transform:translateY(-1px)}.team-avatar{display:grid;width:44px;height:44px;flex:0 0 44px;place-items:center;border-radius:13px;color:#7c3aed;background:#f5f3ff}.team-main{min-width:0;flex:1}.team-name-row{display:flex;align-items:center;gap:8px}.team-name-row h3{margin:0;overflow:hidden;color:#101828;font-size:.88rem;font-weight:800;text-overflow:ellipsis;white-space:nowrap}.team-main p{margin:3px 0 0;color:#98a2b3;font-size:.7rem}.team-badge{padding:3px 7px;border-radius:99px;color:#6941c6;background:#f4ebff;font-size:.58rem;font-weight:800}.team-open{display:grid;width:34px;height:34px;place-items:center;border-radius:10px;color:#98a2b3;background:#f8fafc}.team-open:hover{color:#2563eb;background:#eff6ff}.empty-dashboard{display:flex;min-height:180px;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #d0d5dd;border-radius:20px;color:#98a2b3;background:#fcfcfd;text-align:center}.empty-dashboard h3{margin:9px 0 3px;color:#344054;font-size:.95rem}.empty-dashboard p{max-width:380px;margin:0;font-size:.74rem}.appearance-card{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding:24px}.appearance-preview{overflow:hidden;min-height:245px;border:1px solid #dfe3ea;border-radius:18px;background:#f8fafc}.preview-top{display:flex;gap:5px;height:32px;align-items:center;padding:0 12px;border-bottom:1px solid #e4e7ec;background:#fff}.preview-top span{width:7px;height:7px;border-radius:50%;background:#d0d5dd}.preview-body{display:flex;height:212px}.preview-sidebar{width:28%;border-right:1px solid #e4e7ec;background:#fff}.preview-content{flex:1;padding:18px}.preview-content div{height:42px;margin-bottom:10px;border-radius:9px;background:#fff;box-shadow:0 5px 14px rgba(16,24,40,.05)}.preview-content div:first-child{width:62%;height:14px;margin-bottom:18px;background:#dbeafe}.appearance-controls{display:flex;flex-direction:column;justify-content:center}.appearance-controls :deep(.inline-flex){width:max-content;margin-top:2px;padding:5px;border:1px solid #e4e7ec;border-radius:13px}.appearance-note{display:flex;gap:7px;margin-top:16px;padding:11px 12px;border:1px solid #f2f4f7;border-radius:12px;color:#667085;background:#f8fafc;font-size:.7rem}.appearance-note i{color:#7c3aed}.profile-summary-top{display:flex;justify-content:center;margin:-30px -24px 22px;padding:28px 24px 22px;border-bottom:1px solid #edf0f4;border-radius:22px 22px 0 0;background:linear-gradient(145deg,#eff6ff 0%,#f8f5ff 100%)}.profile-avatar{display:grid;width:86px;height:86px;place-items:center;overflow:hidden;border:4px solid #fff;border-radius:24px;color:#fff;background:linear-gradient(135deg,#2563eb,#7c3aed);font-size:2.35rem;box-shadow:0 12px 28px rgba(37,99,235,.18)}.profile-avatar img{width:100%;height:100%;object-fit:cover}.profile-status-row{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px}.verify-email-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid #bfdbfe;border-radius:9px;color:#1d4ed8;background:#eff6ff;font-size:.68rem;font-weight:800}.verify-email-btn:hover{color:#1e40af;background:#dbeafe}.profile-summary-icon{display:grid;width:36px;height:36px;flex:0 0 36px;place-items:center;border-radius:10px;color:#2563eb;background:#eff6ff}.profile-summary-list>div{padding:10px!important}.profile-summary-list>div>span:last-child{min-width:0}
+@media(max-width:991px){.teams-grid{grid-template-columns:1fr}.appearance-card{grid-template-columns:1fr}.appearance-preview{min-height:200px}.preview-body{height:167px}}@media(max-width:575px){.settings-section{margin-bottom:42px}.dashboard-section-heading{align-items:flex-start;flex-wrap:wrap}.dashboard-section-heading h2{font-size:1.4rem}.section-action{width:100%;margin-left:64px}.dashboard-card,.appearance-card{padding:16px}.password-actions{align-items:flex-start;flex-direction:column}.password-actions .btn{width:100%}.appearance-preview{display:none}.profile-summary-top{margin:-16px -16px 18px;padding:22px 16px 18px}}
 </style>

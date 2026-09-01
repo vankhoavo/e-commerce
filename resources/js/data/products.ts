@@ -1,22 +1,4 @@
-export type Product = {
-    id: number;
-    slug: string;
-    name: string;
-    category: string;
-    categorySlug: string;
-    brand: string;
-    price: number;
-    oldPrice?: number;
-    image: string;
-    gallery: string[];
-    badge?: string;
-    rating: number;
-    sold: number;
-    stock: number;
-    shortDescription: string;
-    description: string;
-    specs: Record<string, string>;
-};
+export type Product = { id: number; slug: string; name: string; category: string; categorySlug: string; brand: string; price: number; oldPrice?: number; image: string; gallery: string[]; badge?: string; rating: number; sold: number; stock: number; shortDescription: string; description: string; specs: Record<string, string> };
 
 export const categories = [
     { name: 'Laptop', slug: 'laptop', icon: 'bi-laptop', count: 120, tone: 'primary' },
@@ -24,96 +6,15 @@ export const categories = [
     { name: 'Màn hình', slug: 'monitor', icon: 'bi-display', count: 80, tone: 'cyan' },
     { name: 'Phụ kiện', slug: 'accessories', icon: 'bi-keyboard', count: 200, tone: 'orange' },
 ];
-
 const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=85`;
-
 export const products: Product[] = [
-    {
-        id: 1,
-        slug: 'asus-rog-strix-g16-g614',
-        name: 'ASUS ROG Strix G16 G614',
-        category: 'Laptop', categorySlug: 'laptop', brand: 'ASUS',
-        price: 29990000, oldPrice: 32990000,
-        image: img('photo-1593642632823-8f785ba67e45'),
-        gallery: [img('photo-1593642632823-8f785ba67e45'), img('photo-1496181133206-80ce9b88a853'), img('photo-1517336714731-489689fd1ca8')],
-        badge: 'Giảm 9%', rating: 4.9, sold: 120, stock: 18,
-        shortDescription: 'Laptop gaming mạnh mẽ cho học tập, sáng tạo nội dung và chiến game.',
-        description: 'ROG Strix G16 kết hợp hiệu năng cao, màn hình tốc độ cao và hệ thống tản nhiệt mạnh mẽ. Đây là lựa chọn cân bằng cho game thủ và người dùng cần máy hiệu năng cao.',
-        specs: { CPU: 'Intel Core i7-13650HX', RAM: '16GB DDR5', 'Ổ cứng': '512GB NVMe SSD', GPU: 'NVIDIA GeForce RTX 4060 8GB', 'Màn hình': '16 inch FHD+ 165Hz', 'Hệ điều hành': 'Windows 11' },
-    },
-    {
-        id: 2,
-        slug: 'lenovo-ideapad-slim-5-14',
-        name: 'Lenovo IdeaPad Slim 5 14',
-        category: 'Laptop', categorySlug: 'laptop', brand: 'Lenovo',
-        price: 16490000, oldPrice: 18990000,
-        image: img('photo-1484788984921-03950022c9ef'),
-        gallery: [img('photo-1484788984921-03950022c9ef'), img('photo-1496181133206-80ce9b88a853')],
-        badge: 'Bán chạy', rating: 4.8, sold: 96, stock: 25,
-        shortDescription: 'Thiết kế mỏng nhẹ, pin tốt, phù hợp học tập và công việc văn phòng.',
-        description: 'IdeaPad Slim 5 hướng tới trải nghiệm làm việc linh hoạt với thiết kế thanh lịch, màn hình sắc nét và thời lượng pin tốt.',
-        specs: { CPU: 'AMD Ryzen 7 7730U', RAM: '16GB DDR4', 'Ổ cứng': '512GB NVMe SSD', GPU: 'AMD Radeon Graphics', 'Màn hình': '14 inch FHD IPS', 'Trọng lượng': 'Khoảng 1.46 kg' },
-    },
-    {
-        id: 3,
-        slug: 'asus-dual-rtx-4060-oc',
-        name: 'ASUS Dual GeForce RTX 4060 OC 8GB',
-        category: 'Linh kiện PC', categorySlug: 'components', brand: 'ASUS',
-        price: 8990000,
-        image: img('photo-1591488320449-011701bb6704'),
-        gallery: [img('photo-1591488320449-011701bb6704'), img('photo-1587202372634-32705e3bf49c')],
-        badge: 'Mới', rating: 4.9, sold: 58, stock: 12,
-        shortDescription: 'Card đồ họa RTX 4060 8GB cho gaming Full HD và sáng tạo nội dung.',
-        description: 'ASUS Dual RTX 4060 OC mang tới hiệu năng đồ họa mạnh mẽ trong thiết kế nhỏ gọn, phù hợp nhiều cấu hình PC hiện đại.',
-        specs: { GPU: 'GeForce RTX 4060', VRAM: '8GB GDDR6', 'Bus bộ nhớ': '128-bit', 'Cổng kết nối': 'HDMI / DisplayPort', 'Nguồn đề nghị': '550W' },
-    },
-    {
-        id: 4,
-        slug: 'samsung-990-pro-1tb',
-        name: 'Samsung 990 PRO 1TB NVMe PCIe 4.0',
-        category: 'Linh kiện PC', categorySlug: 'components', brand: 'Samsung',
-        price: 1890000, oldPrice: 2190000,
-        image: img('photo-1597872200969-2b65d56bd16b'),
-        gallery: [img('photo-1597872200969-2b65d56bd16b')],
-        badge: 'Giảm 14%', rating: 4.7, sold: 184, stock: 42,
-        shortDescription: 'SSD NVMe PCIe 4.0 tốc độ cao, nâng cấp máy nhanh và ổn định.',
-        description: 'Samsung 990 PRO là lựa chọn cao cấp cho hệ thống cần tốc độ đọc ghi lớn, thời gian tải ứng dụng nhanh và độ ổn định cao.',
-        specs: { 'Dung lượng': '1TB', Interface: 'PCIe 4.0 x4, NVMe', 'Đọc tuần tự': 'Tối đa 7,450 MB/s', 'Ghi tuần tự': 'Tối đa 6,900 MB/s', 'Kích thước': 'M.2 2280' },
-    },
-    {
-        id: 5,
-        slug: 'lg-ultragear-27gr75q',
-        name: 'LG UltraGear 27GR75Q 27 inch 165Hz',
-        category: 'Màn hình', categorySlug: 'monitor', brand: 'LG',
-        price: 6490000,
-        image: img('photo-1527443224154-c4a3942d3acf'),
-        gallery: [img('photo-1527443224154-c4a3942d3acf')],
-        badge: 'Gaming', rating: 4.8, sold: 44, stock: 15,
-        shortDescription: 'Màn hình gaming 27 inch QHD 165Hz, chuyển động mượt mà.',
-        description: 'UltraGear 27GR75Q mang tới không gian hiển thị rộng, độ phân giải cao và tần số quét 165Hz cho trải nghiệm gaming mượt.',
-        specs: { 'Kích thước': '27 inch', 'Độ phân giải': '2560 x 1440', 'Tần số quét': '165Hz', 'Tấm nền': 'IPS', 'Thời gian đáp ứng': '1ms' },
-    },
-    {
-        id: 6,
-        slug: 'logitech-mx-keys-s',
-        name: 'Logitech MX Keys S',
-        category: 'Phụ kiện', categorySlug: 'accessories', brand: 'Logitech',
-        price: 2390000, oldPrice: 2690000,
-        image: img('photo-1587829741301-dc798b83add3'),
-        gallery: [img('photo-1587829741301-dc798b83add3')],
-        badge: 'Giảm 11%', rating: 4.8, sold: 71, stock: 30,
-        shortDescription: 'Bàn phím không dây cao cấp, gõ êm và hỗ trợ đa thiết bị.',
-        description: 'MX Keys S phù hợp môi trường làm việc hiện đại với thiết kế tối giản, trải nghiệm gõ thoải mái và khả năng kết nối nhiều thiết bị.',
-        specs: { Kết nối: 'Bluetooth / Logi Bolt', Pin: 'Sạc USB-C', 'Thiết bị': 'Windows / macOS / Linux', Layout: 'Full-size', 'Đèn nền': 'Smart backlight' },
-    },
+    { id: 1, slug: 'asus-rog-strix-g16-g614', name: 'ASUS ROG Strix G16 G614', category: 'Laptop', categorySlug: 'laptop', brand: 'ASUS', price: 29990000, oldPrice: 32990000, image: img('photo-1593642632823-8f785ba67e45'), gallery: [img('photo-1593642632823-8f785ba67e45'), img('photo-1496181133206-80ce9b88a853'), img('photo-1517336714731-489689fd1ca8')], badge: 'Giảm 9%', rating: 4.9, sold: 120, stock: 18, shortDescription: 'Laptop gaming mạnh mẽ cho học tập, sáng tạo nội dung và chiến game.', description: 'ROG Strix G16 kết hợp hiệu năng cao, màn hình tốc độ cao và hệ thống tản nhiệt mạnh mẽ.', specs: { CPU: 'Intel Core i7-13650HX', RAM: '16GB DDR5', 'Ổ cứng': '512GB NVMe SSD', GPU: 'NVIDIA GeForce RTX 4060 8GB', 'Màn hình': '16 inch FHD+ 165Hz', 'Hệ điều hành': 'Windows 11' } },
+    { id: 2, slug: 'lenovo-ideapad-slim-5-14', name: 'Lenovo IdeaPad Slim 5 14', category: 'Laptop', categorySlug: 'laptop', brand: 'Lenovo', price: 16490000, oldPrice: 18990000, image: img('photo-1484788984921-03950022c9ef'), gallery: [img('photo-1484788984921-03950022c9ef'), img('photo-1496181133206-80ce9b88a853')], badge: 'Bán chạy', rating: 4.8, sold: 96, stock: 25, shortDescription: 'Thiết kế mỏng nhẹ, pin tốt, phù hợp học tập và công việc văn phòng.', description: 'IdeaPad Slim 5 hướng tới trải nghiệm làm việc linh hoạt với thiết kế thanh lịch và màn hình sắc nét.', specs: { CPU: 'AMD Ryzen 7 7730U', RAM: '16GB DDR4', 'Ổ cứng': '512GB NVMe SSD', GPU: 'AMD Radeon Graphics', 'Màn hình': '14 inch FHD IPS', 'Trọng lượng': 'Khoảng 1.46 kg' } },
+    { id: 3, slug: 'asus-dual-rtx-4060-oc', name: 'ASUS Dual GeForce RTX 4060 OC 8GB', category: 'Linh kiện PC', categorySlug: 'components', brand: 'ASUS', price: 8990000, image: img('photo-1591488320449-011701bb6704'), gallery: [img('photo-1591488320449-011701bb6704'), img('photo-1587202372634-32705e3bf49c')], badge: 'Mới', rating: 4.9, sold: 58, stock: 12, shortDescription: 'Card đồ họa RTX 4060 8GB cho gaming Full HD và sáng tạo nội dung.', description: 'ASUS Dual RTX 4060 OC mang tới hiệu năng đồ họa mạnh mẽ trong thiết kế nhỏ gọn.', specs: { GPU: 'GeForce RTX 4060', VRAM: '8GB GDDR6', 'Bus bộ nhớ': '128-bit', 'Cổng kết nối': 'HDMI / DisplayPort', 'Nguồn đề nghị': '550W' } },
+    { id: 4, slug: 'samsung-990-pro-1tb', name: 'Samsung 990 PRO 1TB NVMe PCIe 4.0', category: 'Linh kiện PC', categorySlug: 'components', brand: 'Samsung', price: 1890000, oldPrice: 2190000, image: img('photo-1597872200969-2b65d56bd16b'), gallery: [img('photo-1597872200969-2b65d56bd16b')], badge: 'Giảm 14%', rating: 4.7, sold: 184, stock: 42, shortDescription: 'SSD NVMe PCIe 4.0 tốc độ cao, nâng cấp máy nhanh và ổn định.', description: 'Samsung 990 PRO là lựa chọn cao cấp cho hệ thống cần tốc độ đọc ghi lớn.', specs: { 'Dung lượng': '1TB', Interface: 'PCIe 4.0 x4, NVMe', 'Đọc tuần tự': 'Tối đa 7,450 MB/s', 'Ghi tuần tự': 'Tối đa 6,900 MB/s', 'Kích thước': 'M.2 2280' } },
+    { id: 5, slug: 'lg-ultragear-27gr75q', name: 'LG UltraGear 27GR75Q 27 inch 165Hz', category: 'Màn hình', categorySlug: 'monitor', brand: 'LG', price: 6490000, image: img('photo-1527443224154-c4a3942d3acf'), gallery: [img('photo-1527443224154-c4a3942d3acf')], badge: 'Gaming', rating: 4.8, sold: 44, stock: 15, shortDescription: 'Màn hình gaming 27 inch QHD 165Hz, chuyển động mượt mà.', description: 'UltraGear 27GR75Q mang tới không gian hiển thị rộng và tần số quét 165Hz.', specs: { 'Kích thước': '27 inch', 'Độ phân giải': '2560 x 1440', 'Tần số quét': '165Hz', 'Tấm nền': 'IPS', 'Thời gian đáp ứng': '1ms' } },
+    { id: 6, slug: 'logitech-mx-keys-s', name: 'Logitech MX Keys S', category: 'Phụ kiện', categorySlug: 'accessories', brand: 'Logitech', price: 2390000, oldPrice: 2690000, image: img('photo-1587829741301-dc798b83add3'), gallery: [img('photo-1587829741301-dc798b83add3')], badge: 'Giảm 11%', rating: 4.8, sold: 71, stock: 30, shortDescription: 'Bàn phím không dây cao cấp, gõ êm và hỗ trợ đa thiết bị.', description: 'MX Keys S phù hợp môi trường làm việc hiện đại với thiết kế tối giản.', specs: { 'Kết nối': 'Bluetooth / Logi Bolt', Pin: 'Sạc USB-C', 'Thiết bị': 'Windows / macOS / Linux', Layout: 'Full-size', 'Đèn nền': 'Smart backlight' } },
 ];
-
 export const featuredProducts = products.slice(0, 4);
-
-export function getProduct(slug: string) {
-    return products.find((product) => product.slug === slug);
-}
-
-export function formatPrice(price: number) {
-    return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
-}
+export function getProduct(slug: string) { return products.find((product) => product.slug === slug); }
+export function formatPrice(price: number) { return new Intl.NumberFormat('vi-VN').format(price) + 'đ'; }

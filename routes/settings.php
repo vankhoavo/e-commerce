@@ -13,9 +13,10 @@ Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::post('settings/email/request', [EmailChangeController::class, 'request'])->name('email-change.request');
+    Route::post('settings/email/request', [EmailChangeController::class, 'request'])->middleware('throttle:3,1')->name('email-change.request');
     Route::get('settings/email/verify', [EmailChangeController::class, 'edit'])->name('email-change.edit');
-    Route::post('settings/email/verify', [EmailChangeController::class, 'verify'])->name('email-change.verify');
+    Route::post('settings/email/verify', [EmailChangeController::class, 'verify'])->middleware('throttle:6,1')->name('email-change.verify');
+    Route::post('settings/email/resend', [EmailChangeController::class, 'resend'])->middleware('throttle:3,1')->name('email-change.resend');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

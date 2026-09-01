@@ -4,7 +4,6 @@ namespace App\Http\Responses\Concerns;
 
 use App\Models\Team;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\URL;
 
 trait RedirectsToCurrentTeam
 {
@@ -12,9 +11,7 @@ trait RedirectsToCurrentTeam
     {
         $team = $this->currentTeam($request);
 
-        URL::defaults(['current_team' => $team->slug]);
-
-        return "/{$team->slug}{$redirect}";
+        return $redirect.'?current_team='.urlencode($team->slug);
     }
 
     protected function currentTeam(Request $request): Team

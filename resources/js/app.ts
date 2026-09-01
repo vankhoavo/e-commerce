@@ -1,6 +1,5 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import 'bootstrap';
 import '../css/app.css';
 import { createInertiaApp } from '@inertiajs/vue3';
 import AdminLayout from '@/layouts/AdminLayout.vue';
@@ -9,6 +8,12 @@ import ClientLayout from '@/layouts/ClientLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TechStore';
+
+// Bootstrap's JavaScript touches `document` during module evaluation.
+// Load it only in the browser so Inertia SSR can evaluate the app safely.
+if (typeof window !== 'undefined') {
+    void import('bootstrap');
+}
 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

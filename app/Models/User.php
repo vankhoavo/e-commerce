@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\HasTeams;
+use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -19,7 +20,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $name
  * @property string $email
  * @property string|null $phone
- * @property string $role
+ * @property UserRole $role
  * @property bool $is_active
  * @property string|null $avatar
  * @property Carbon|null $email_verified_at
@@ -37,6 +38,7 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
             'is_active' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];
@@ -44,11 +46,11 @@ class User extends Authenticatable implements PasskeyUser
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === UserRole::ADMIN;
     }
 
     public function isStaff(): bool
     {
-        return in_array($this->role, ['admin', 'staff'], true);
+        return in_array($this->role, [UserRole::ADMIN, UserRole::STAFF], true);
     }
 }

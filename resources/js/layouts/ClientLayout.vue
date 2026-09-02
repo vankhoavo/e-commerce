@@ -1,14 +1,32 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { getCartStorageKey, migrateLegacyCart, readCart } from '@/lib/cart';
 
 const search = ref('');
 const cartCount = ref(0);
 const mobileMenuOpen = ref(false);
 const page = usePage();
 const authUser = computed(() => (page.props as any).auth?.user ?? null);
+const userId = computed<number | null>(() => authUser.value?.id ? Number(authUser.value.id) : null);
 const submitSearch = () => { const value = search.value.trim(); router.visit(value ? `/products?search=${encodeURIComponent(value)}` : '/products'); mobileMenuOpen.value = false; };
-function readCartCount() { try { const cart = JSON.parse(localStorage.getItem('techstore_cart') ?? '[]'); cartCount.value = Array.isArray(cart) ? cart.reduce((total: number, item: any) => total + Number(item.quantity ?? 1), 0) : 0; } catch { cartCount.value = 0; } }
+
+function syncAccountCart() {
+    if (!userId.value) {
+        localStorage.removeItem('techstore_cart');
+        cartCount.value = 0;
+        return;
+    }
+
+    migrateLegacyCart(userId.value);
+    const cart = readCart(userId.value);
+    cartCount.value = cart.reduce((total: number, item: any) => total + Number(item.quantity ?? 1), 0);
+}
+
+function readCartCount() {
+    syncAccountCart();
+}
+
 function guardGuestCart(event: MouseEvent) {
     if (authUser.value) return;
     const target = event.target as HTMLElement | null;
@@ -19,8 +37,24 @@ function guardGuestCart(event: MouseEvent) {
     const returnTo = `${window.location.pathname}${window.location.search}`;
     router.visit(`/login?redirect=${encodeURIComponent(returnTo)}`);
 }
-onMounted(() => { readCartCount(); window.addEventListener('storage', readCartCount); window.addEventListener('techstore-cart-updated', readCartCount); window.addEventListener('click', guardGuestCart, true); });
-onUnmounted(() => { window.removeEventListener('storage', readCartCount); window.removeEventListener('techstore-cart-updated', readCartCount); window.removeEventListener('click', guardGuestCart, true); });
+
+function handleCartUpdated() {
+    syncAccountCart();
+}
+
+watch(userId, () => syncAccountCart());
+
+onMounted(() => {
+    syncAccountCart();
+    window.addEventListener('storage', readCartCount);
+    window.addEventListener('techstore-cart-updated', handleCartUpdated);
+    window.addEventListener('click', guardGuestCart, true);
+});
+onUnmounted(() => {
+    window.removeEventListener('storage', readCartCount);
+    window.removeEventListener('techstore-cart-updated', handleCartUpdated);
+    window.removeEventListener('click', guardGuestCart, true);
+});
 </script>
 
 <template>

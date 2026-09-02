@@ -1,12 +1,12 @@
 <?php
 
+use App\Http\Controllers\Auth\EmailPasswordResetController;
 use App\Http\Controllers\Auth\EmailVerificationOtpController;
 use App\Http\Controllers\Auth\GoogleAuthController;
-use App\Http\Controllers\Auth\PhonePasswordResetController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PayPalController;
+use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -19,12 +19,14 @@ Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->middlewar
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('guest')->name('google.callback');
 Route::get('/auth/google/check-email', [GoogleAuthController::class, 'checkEmail'])->middleware('guest')->name('google.check-email');
 
-Route::get('/forgot-password/phone', [PhonePasswordResetController::class, 'showRequest'])->middleware('guest')->name('password.phone.request');
-Route::post('/forgot-password/phone', [PhonePasswordResetController::class, 'requestCode'])->middleware(['guest', 'throttle:3,5'])->name('password.phone.send');
-Route::get('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'showVerify'])->middleware('guest')->name('password.phone.verify');
-Route::post('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'verifyCode'])->middleware(['guest', 'throttle:6,1'])->name('password.phone.verify.submit');
-Route::get('/forgot-password/phone/reset', [PhonePasswordResetController::class, 'showReset'])->middleware('guest')->name('password.phone.reset');
-Route::post('/forgot-password/phone/reset', [PhonePasswordResetController::class, 'resetPassword'])->middleware(['guest', 'throttle:6,1'])->name('password.phone.reset.submit');
+Route::middleware('guest')->group(function (): void {
+    Route::get('/forgot-password', [EmailPasswordResetController::class, 'showRequest'])->name('password.email.request');
+    Route::post('/forgot-password', [EmailPasswordResetController::class, 'requestCode'])->middleware('throttle:3,5')->name('password.email.send');
+    Route::get('/forgot-password/verify', [EmailPasswordResetController::class, 'showVerify'])->name('password.email.verify');
+    Route::post('/forgot-password/verify', [EmailPasswordResetController::class, 'verifyCode'])->middleware('throttle:6,1')->name('password.email.verify.submit');
+    Route::get('/forgot-password/reset', [EmailPasswordResetController::class, 'showReset'])->name('password.email.reset');
+    Route::post('/forgot-password/reset', [EmailPasswordResetController::class, 'resetPassword'])->middleware('throttle:6,1')->name('password.email.reset.submit');
+});
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/verify-email-otp', [EmailVerificationOtpController::class, 'show'])->name('email-verify-otp.show');

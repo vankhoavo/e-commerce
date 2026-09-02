@@ -2,6 +2,9 @@
 
 use Laravel\Fortify\Features;
 
+$applicationUrl = rtrim((string) config('app.url'), '/');
+$applicationHost = parse_url($applicationUrl, PHP_URL_HOST);
+
 return [
 
     /*
@@ -138,13 +141,18 @@ return [
     | Passkeys
     |--------------------------------------------------------------------------
     |
-    | These settings configure Fortify's passkey (WebAuthn) support.
+    | WebAuthn is bound to the browser origin and the relying-party domain.
+    | APP_URL is the single source of truth for local Google OAuth, password
+    | authentication and the browser origin. Optional PASSKEYS_* variables
+    | allow a production deployment to override the WebAuthn values explicitly.
     |
     */
 
     'passkeys' => [
-        'relying_party_id' => parse_url(config('app.url'), PHP_URL_HOST),
-        'allowed_origins' => [config('app.url')],
+        'relying_party_id' => env('PASSKEYS_RELYING_PARTY_ID', $applicationHost),
+        'allowed_origins' => [
+            rtrim((string) env('PASSKEYS_ORIGIN', $applicationUrl), '/'),
+        ],
         'user_handle_secret' => env('PASSKEYS_USER_HANDLE_SECRET', config('app.key')),
         'timeout' => 60000,
     ],

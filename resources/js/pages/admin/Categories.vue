@@ -1,0 +1,20 @@
+<script setup lang="ts">
+import { ref } from 'vue';
+import { router } from '@inertiajs/vue3';
+
+type Category = { id: number; name: string; slug: string; description?: string | null; icon?: string | null; is_active: boolean; products_count: number };
+const props = defineProps<{ categories: Category[] }>();
+const editing = ref<Category | null>(null);
+const showForm = ref(false);
+const form = ref({ name: '', description: '', icon: 'bi-tags', is_active: true });
+function openCreate() { editing.value = null; form.value = { name: '', description: '', icon: 'bi-tags', is_active: true }; showForm.value = true; }
+function openEdit(category: Category) { editing.value = category; form.value = { name: category.name, description: category.description ?? '', icon: category.icon ?? 'bi-tags', is_active: category.is_active }; showForm.value = true; }
+function submit() { const options = { onSuccess: () => { showForm.value = false; } }; editing.value ? router.patch(`/admin/categories/${editing.value.id}`, form.value, options) : router.post('/admin/categories', form.value, options); }
+</script>
+<template>
+<div class="admin-page"><div class="admin-page-head"><div><div class="admin-kicker">DANH MỤC</div><h1>Quản lý danh mục</h1><p>Thêm, chỉnh sửa và kích hoạt danh mục sản phẩm.</p></div><button class="btn btn-primary" @click="openCreate"><i class="bi bi-plus-lg me-2"/>Thêm danh mục</button></div>
+<div class="admin-panel"><div class="table-responsive"><table class="table admin-table align-middle"><thead><tr><th>Tên danh mục</th><th>Đường dẫn</th><th>Sản phẩm</th><th>Trạng thái</th><th class="text-end">Thao tác</th></tr></thead><tbody><tr v-for="item in props.categories" :key="item.id"><td><div class="fw-semibold">{{ item.name }}</div><div class="small text-secondary">{{ item.description || 'Chưa có mô tả' }}</div></td><td><code>/products?category={{ item.slug }}</code></td><td>{{ item.products_count }}</td><td><span :class="['badge', item.is_active ? 'text-bg-success' : 'text-bg-secondary']">{{ item.is_active ? 'Đang hoạt động' : 'Đã khóa' }}</span></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" @click="openEdit(item)"><i class="bi bi-pencil"/></button></td></tr></tbody></table></div></div>
+<div v-if="showForm" class="modal d-block admin-modal-backdrop"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow-lg"><div class="modal-header"><h5 class="modal-title">{{ editing ? 'Cập nhật danh mục' : 'Thêm danh mục' }}</h5><button class="btn-close" @click="showForm=false"/></div><form @submit.prevent="submit"><div class="modal-body"><label class="form-label">Tên danh mục</label><input v-model="form.name" required class="form-control mb-3"/><label class="form-label">Mô tả</label><textarea v-model="form.description" class="form-control mb-3" rows="3"/><label class="form-label">Biểu tượng</label><input v-model="form.icon" class="form-control mb-3" placeholder="bi-tags"/><div class="form-check"><input id="cat-active" v-model="form.is_active" class="form-check-input" type="checkbox"/><label for="cat-active" class="form-check-label">Đang hoạt động</label></div></div><div class="modal-footer"><button type="button" class="btn btn-light" @click="showForm=false">Hủy</button><button class="btn btn-primary">Lưu</button></div></form></div></div></div>
+</div>
+</template>
+<style scoped>.admin-page-head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:22px}.admin-kicker{color:#2563eb;font-size:.68rem;font-weight:900;letter-spacing:.14em}.admin-page-head h1{margin:3px 0;font-size:1.7rem;font-weight:900}.admin-page-head p{margin:0;color:#667085}.admin-panel{border:1px solid #e5e9f0;border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(16,24,40,.05)}.admin-table{margin:0}.admin-table th{font-size:.72rem;color:#667085;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #edf0f4}.admin-table td{font-size:.82rem;color:#344054;border-color:#f2f4f7}.admin-table code{color:#667085;font-size:.7rem}.admin-modal-backdrop{background:rgba(15,23,42,.45)}</style>

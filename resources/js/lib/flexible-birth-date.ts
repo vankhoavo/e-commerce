@@ -11,7 +11,7 @@ function daysInMonth(year: number, month: number): number {
 
 function isValidDate(year: number, month: number, day: number): boolean {
     const today = new Date();
-    if (!Number.isInteger(year) || year < MIN_YEAR || year > today.getFullYear()) return false;
+    if (!Number.isInteger(year) || year < MIN_YEAR || year > MAX_YEAR) return false;
     if (!Number.isInteger(month) || month < 0 || month > 11) return false;
     if (!Number.isInteger(day) || day < 1 || day > daysInMonth(year, month)) return false;
     if (year === today.getFullYear() && month > today.getMonth()) return false;
@@ -29,7 +29,7 @@ function parseDate(value: string): CalendarDate | null {
 
     const iso = /^\d{4,}-/.test(text);
     const year = Number(iso ? match[1] : match[3]);
-    const month = Number(iso ? match[2] : match[2]) - 1;
+    const month = Number(match[2]) - 1;
     const day = Number(iso ? match[3] : match[1]);
 
     return isValidDate(year, month, day) ? { year, month, day } : null;
@@ -40,7 +40,7 @@ function toIso(date: CalendarDate): string {
 }
 
 function toDisplay(date: CalendarDate | null): string {
-    if (!date) return '';
+    if (!date) return 'dd/mm/yyyy';
     return `${String(date.day).padStart(2, '0')}/${String(date.month + 1).padStart(2, '0')}/${date.year}`;
 }
 
@@ -64,6 +64,23 @@ function closeModal(): void {
     document.body.style.removeProperty('overflow');
 }
 
+function syncProfileField(hidden: HTMLInputElement, date: CalendarDate | null): void {
+    const value = date ? toIso(date) : '';
+    hidden.value = value;
+    hidden.setAttribute('value', value);
+    hidden.dataset.birthDateValue = value;
+
+    const field = hidden.closest<HTMLElement>('.date-field');
+    const label = field?.querySelector<HTMLElement>('.date-trigger span');
+    if (label) {
+        label.textContent = toDisplay(date);
+        label.classList.toggle('placeholder', !date);
+    }
+
+    hidden.dispatchEvent(new Event('input', { bubbles: true }));
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 function saveModal(day: HTMLSelectElement, month: HTMLSelectElement, year: HTMLSelectElement): void {
     const date: CalendarDate = {
         day: Number(day.value),
@@ -73,17 +90,16 @@ function saveModal(day: HTMLSelectElement, month: HTMLSelectElement, year: HTMLS
 
     if (!activeHidden || !isValidDate(date.year, date.month, date.day)) return;
 
-    activeHidden.value = toIso(date);
-    activeHidden.dispatchEvent(new Event('input', { bubbles: true }));
-    activeHidden.dispatchEvent(new Event('change', { bubbles: true }));
-    activeSelected = date;
+    syncProfileField(activeHidden, date);
     closeModal();
 }
 
 function openModal(hidden: HTMLInputElement): void {
     closeModal();
     activeHidden = hidden;
-    activeSelected = parseDate(hidden.value) ?? { year: 2001, month: 4, day: 4 };
+
+    const storedValue = hidden.dataset.birthDateValue || hidden.value;
+    activeSelected = parseDate(storedValue) ?? { year: 2001, month: 4, day: 4 };
 
     const today = new Date();
     if (!isValidDate(activeSelected.year, activeSelected.month, activeSelected.day)) {
@@ -122,9 +138,6 @@ function openModal(hidden: HTMLInputElement): void {
     for (let value = MAX_YEAR; value >= MIN_YEAR; value -= 1) {
         year.appendChild(createOption(String(value), String(value), value === activeSelected.year));
     }
-    if (activeSelected.year < MIN_YEAR || activeSelected.year > MAX_YEAR) {
-        year.insertBefore(createOption(String(activeSelected.year), String(activeSelected.year), true), year.firstChild);
-    }
 
     const refreshDays = (): void => {
         const selectedDay = Number(day.value || activeSelected?.day || 1);
@@ -159,7 +172,7 @@ function initBirthDateModal(): void {
 
         event.preventDefault();
         event.stopPropagation();
-        if ('stopImmediatePropagation' in event) event.stopImmediatePropagation();
+        event.stopImmediatePropagation();
         openModal(hidden);
     };
 
@@ -172,13 +185,20 @@ function initBirthDateModal(): void {
         const hidden = form.querySelector<HTMLInputElement>('input[name="birth_date"]');
         if (!hidden) return;
 
-        const parsed = parseDate(hidden.value);
-        if (hidden.value.trim() && !parsed) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            return;
+        const value = hidden.dataset.birthDateValue || hidden.value;
+        if (value) {
+            const parsed = parseDate(value);
+            if (!parsed) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            hidden.value = toIso(parsed);
+            hidden.setAttribute('value', hidden.value);
+        } else {
+            hidden.value = '';
+            hidden.setAttribute('value', '');
         }
-        if (parsed) hidden.value = toIso(parsed);
     };
 
     document.removeEventListener('submit', submitGuard, true);

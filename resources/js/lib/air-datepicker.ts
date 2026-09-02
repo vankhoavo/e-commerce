@@ -41,7 +41,9 @@ function initBirthDatepicker(root: ParentNode = document): void {
         if (!hidden || !trigger) return;
 
         const today = todayAtMidnight();
-        const value = hidden.value && !Number.isNaN(parseDate(hidden.value).getTime()) ? hidden.value : isoDate(today);
+        const rawValue = hidden.value.trim();
+        const parsedValue = rawValue ? parseDate(rawValue) : today;
+        const value = rawValue && rawValue === isoDate(parsedValue) ? rawValue : isoDate(today);
         hidden.value = value;
 
         const input = document.createElement('input');
@@ -51,8 +53,6 @@ function initBirthDatepicker(root: ParentNode = document): void {
         input.value = displayDate(parseDate(value));
         input.setAttribute('aria-label', 'Ngày sinh');
         input.setAttribute('autocomplete', 'off');
-        trigger.hidden = true;
-        trigger.insertAdjacentElement('afterend', input);
 
         const datepicker = new AirDatepicker(input, {
             locale,
@@ -77,6 +77,8 @@ function initBirthDatepicker(root: ParentNode = document): void {
             },
         });
 
+        trigger.hidden = true;
+        trigger.insertAdjacentElement('afterend', input);
         input.addEventListener('click', () => datepicker.show());
         input.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -96,15 +98,30 @@ export function initAirDatepicker(): void {
     const run = () => initBirthDatepicker(document);
     run();
     requestAnimationFrame(run);
-    window.setTimeout(run, 100);
-    window.setTimeout(run, 500);
+    window.setTimeout(run, 50);
+    window.setTimeout(run, 250);
+    window.setTimeout(run, 750);
 
-    if (document.body.dataset.techstoreAirDatepickerObserver === 'true') return;
-    document.body.dataset.techstoreAirDatepickerObserver = 'true';
+    if (document.body.dataset.techstoreAirDatepickerReady === 'true') return;
+    document.body.dataset.techstoreAirDatepickerReady = 'true';
+
+    document.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement | null;
+        const trigger = target?.closest<HTMLButtonElement>('.date-trigger');
+        if (!trigger) return;
+
+        const wrapper = trigger.closest<HTMLElement>('.date-picker');
+        if (!wrapper) return;
+        run();
+        const input = wrapper.querySelector<HTMLInputElement>('.date-trigger-air');
+        if (input) {
+            event.preventDefault();
+            input.click();
+        }
+    });
 
     const observer = new MutationObserver((mutations) => {
         if (mutations.some((mutation) => mutation.addedNodes.length > 0)) run();
     });
-
     observer.observe(document.body, { childList: true, subtree: true });
 }

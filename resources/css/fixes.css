@@ -44,3 +44,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* OTP inputs use a single visible border; avoid a second focus ring. */
 .forgot-input:focus-within{box-shadow:none!important}
 .forgot-input input:focus,.forgot-input input:focus-visible{border:0!important;outline:0!important;box-shadow:none!important}
+
+/* VAT invoice toggle: keep the switch and text in predictable columns. */
+.checkout-page .vat-toggle-row{position:relative!important;display:grid!important;grid-template-columns:36px minmax(0,1fr)!important;align-items:center!important;gap:12px!important;width:100%!important;min-height:64px!important;margin:0!important;padding:12px 14px!important;border:1px solid #e4e7ec!important;border-radius:12px!important;background:#fbfcfe!important;cursor:pointer!important}
+.checkout-page .vat-toggle-row>input{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;opacity:0!important;pointer-events:auto!important;cursor:pointer!important}
+.checkout-page .vat-toggle-ui{position:relative!important;display:block!important;width:36px!important;height:20px!important;flex:none!important;border-radius:99px!important;background:#d0d5dd!important;transition:background .2s ease!important;z-index:1!important}
+.checkout-page .vat-toggle-ui i{position:absolute!important;top:2px!important;left:2px!important;display:grid!important;width:16px!important;height:16px!important;place-items:center!important;border-radius:50%!important;color:#fff!important;background:#fff!important;font-size:0!important;box-shadow:0 1px 3px rgba(16,24,40,.2)!important;transition:left .2s ease,color .2s ease!important}
+.checkout-page .vat-toggle-row>input:checked~.vat-toggle-ui{background:#2563eb!important}
+.checkout-page .vat-toggle-row>input:checked~.vat-toggle-ui i{left:18px!important;color:#2563eb!important;font-size:10px!important}
+.checkout-page .vat-toggle-copy{display:block!important;min-width:0!important;position:relative!important;z-index:1!important}
+.checkout-page .vat-toggle-copy strong{display:block!important;margin:0!important;color:#101828!important;font-size:.72rem!important;line-height:1.35!important;font-weight:900!important;white-space:normal!important}
+.checkout-page .vat-toggle-copy small{display:block!important;margin:3px 0 0!important;color:#667085!important;font-size:.6rem!important;line-height:1.5!important;font-weight:500!important;white-space:normal!important}
+@media(max-width:575px){.checkout-page .vat-toggle-row{grid-template-columns:36px minmax(0,1fr)!important;min-height:68px!important;padding:11px 12px!important;gap:10px!important}.checkout-page .vat-toggle-copy strong{font-size:.68rem!important}.checkout-page .vat-toggle-copy small{font-size:.57rem!important}}

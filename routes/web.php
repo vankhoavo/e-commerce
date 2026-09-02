@@ -24,6 +24,7 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/forgot-password', [EmailPasswordResetController::class, 'requestCode'])->middleware('throttle:3,5')->name('password.email.send');
     Route::get('/forgot-password/verify', [EmailPasswordResetController::class, 'showVerify'])->name('password.email.verify');
     Route::post('/forgot-password/verify', [EmailPasswordResetController::class, 'verifyCode'])->middleware('throttle:6,1')->name('password.email.verify.submit');
+    Route::post('/forgot-password/verify/resend', [EmailPasswordResetController::class, 'resendCode'])->middleware('throttle:3,5')->name('password.email.verify.resend');
     Route::get('/forgot-password/reset', [EmailPasswordResetController::class, 'showReset'])->name('password.email.reset');
     Route::post('/forgot-password/reset', [EmailPasswordResetController::class, 'resetPassword'])->middleware('throttle:6,1')->name('password.email.reset.submit');
 });

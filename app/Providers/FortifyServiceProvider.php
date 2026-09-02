@@ -46,15 +46,29 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::authenticateUsing(function (Request $request): ?User {
-            $identifier = trim($request->input('email', ''));
+            $identifier = Str::lower(trim($request->string('email')->toString()));
             $password = $request->string('password')->toString();
 
-            $user = User::query()
-                ->when(strcasecmp($identifier, 'admin') === 0, fn ($query) => $query->where('role', UserRole::ADMIN->value)->whereRaw('LOWER(name) = ?', ['admin']))
-                ->when(strcasecmp($identifier, 'admin') !== 0, fn ($query) => $query->whereRaw('LOWER(email) = ?', [Str::lower($identifier)]))
-                ->first();
+            if (in_array($identifier, ['admin', 'admin@techstore.local'], true)) {
+                $user = User::query()
+                    ->where('role', UserRole::ADMIN->value)
+                    ->where('is_active', true)
+                    ->where(function ($query): void {
+                        $query->whereRaw('LOWER(name) = ?', ['admin'])
+                            ->orWhereRaw('LOWER(email) = ?', ['admin@techstore.local']);
+                    })
+                    ->first();
+            } else {
+                $user = User::query()
+                    ->whereRaw('LOWER(email) = ?', [$identifier])
+                    ->where('role', '!=', UserRole::ADMIN->value)
+                    ->first();
+            }
 
-            if (! $user || ! $user->is_active) return null;
+            if (! $user || ! $user->is_active) {
+                return null;
+            }
+
             return Hash::check($password, $user->password) ? $user : null;
         });
     }

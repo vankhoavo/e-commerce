@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,22 @@ class GoogleAuthController
         ]);
 
         return redirect()->away('https://accounts.google.com/o/oauth2/v2/auth?'.$query);
+    }
+
+    public function checkEmail(Request $request): JsonResponse
+    {
+        $email = Str::lower(trim($request->string('email')->toString()));
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['google_linked' => false]);
+        }
+
+        return response()->json([
+            'google_linked' => User::query()
+                ->where('email', $email)
+                ->whereNotNull('google_id')
+                ->exists(),
+        ]);
     }
 
     public function callback(Request $request): RedirectResponse

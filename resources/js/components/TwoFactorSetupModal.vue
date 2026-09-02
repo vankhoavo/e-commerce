@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import { useClipboard } from '@vueuse/core';
-import { Check, Copy, ScanLine, X } from '@lucide/vue';
+import { Check, Copy, ScanLine } from '@lucide/vue';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import AlertError from '@/components/AlertError.vue';
 import InputError from '@/components/InputError.vue';
@@ -22,21 +22,14 @@ const { qrCodeSvg, manualSetupKey, clearSetupData, fetchSetupData, errors } = us
 const showVerificationStep = ref(false);
 const code = ref('');
 const pinInputContainerRef = useTemplateRef('pinInputContainerRef');
-
 const modalConfig = computed(() => {
     if (props.twoFactorEnabled) return { title: 'Xác thực 2 lớp đã được bật', description: 'Tài khoản của bạn đã được bảo vệ. Bạn có thể đóng cửa sổ này.', buttonText: 'Đóng' };
     if (showVerificationStep.value) return { title: 'Xác nhận mã bảo mật', description: 'Mở ứng dụng xác thực và nhập mã gồm 6 chữ số.', buttonText: 'Xác nhận' };
     return { title: 'Thiết lập xác thực 2 lớp', description: 'Quét mã QR bằng ứng dụng xác thực trên điện thoại để liên kết tài khoản.', buttonText: props.requiresConfirmation ? 'Tiếp tục' : 'Hoàn tất' };
 });
-
 const handleModalNextStep = () => {
-    if (props.requiresConfirmation) {
-        showVerificationStep.value = true;
-        nextTick(() => pinInputContainerRef.value?.querySelector('input')?.focus());
-        return;
-    }
-    clearSetupData();
-    isOpen.value = false;
+    if (props.requiresConfirmation) { showVerificationStep.value = true; nextTick(() => pinInputContainerRef.value?.querySelector('input')?.focus()); return; }
+    clearSetupData(); isOpen.value = false;
 };
 const resetModalState = () => { if (props.twoFactorEnabled) clearSetupData(); showVerificationStep.value = false; code.value = ''; };
 watch(() => isOpen.value, async (open) => { if (!open) { resetModalState(); return; } if (!qrCodeSvg.value) await fetchSetupData(); });
@@ -51,7 +44,6 @@ watch(() => isOpen.value, async (open) => { if (!open) { resetModalState(); retu
                 <DialogTitle>{{ modalConfig.title }}</DialogTitle>
                 <DialogDescription>{{ modalConfig.description }}</DialogDescription>
             </DialogHeader>
-
             <div class="two-factor-modal-body">
                 <template v-if="!showVerificationStep">
                     <AlertError v-if="errors?.length" :errors="errors" />
@@ -63,7 +55,6 @@ watch(() => isOpen.value, async (open) => { if (!open) { resetModalState(); retu
                         <Button class="two-factor-next" @click="handleModalNextStep">{{ modalConfig.buttonText }} <i class="bi bi-arrow-right" /></Button>
                     </template>
                 </template>
-
                 <Form v-else v-bind="confirm.form()" error-bag="confirmTwoFactorAuthentication" reset-on-error @finish="code = ''" @success="isOpen = false" v-slot="{ errors, processing }">
                     <input type="hidden" name="code" :value="code" />
                     <div ref="pinInputContainerRef" class="two-factor-verify">

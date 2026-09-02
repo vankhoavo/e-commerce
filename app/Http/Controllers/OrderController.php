@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 class OrderController extends Controller
 {
     private const COD_SHIPPING_FEE = 30000;
+    private const VAT_RATE = 10.00;
 
     public function index(Request $request): JsonResponse
     {
@@ -45,7 +46,28 @@ class OrderController extends Controller
             'total' => ['required', 'integer', 'min:0'],
             'payment' => ['required', 'string', 'in:cod,paypal-sandbox,paypal-demo'],
             'paypal_order_id' => ['nullable', 'string', 'max:64'],
+            'vat_invoice.requested' => ['nullable', 'boolean'],
+            'vat_invoice.company_name' => ['nullable', 'string', 'max:255'],
+            'vat_invoice.tax_code' => ['nullable', 'string', 'max:32'],
+            'vat_invoice.address' => ['nullable', 'string', 'max:500'],
+            'vat_invoice.email' => ['nullable', 'email', 'max:255'],
         ]);
+
+        $vatRequested = (bool) data_get($data, 'vat_invoice.requested', false);
+        $vatInvoice = (array) data_get($data, 'vat_invoice', []);
+
+        if ($vatRequested) {
+            $missingVatField = collect([
+                'company_name' => 'Vui lòng nhập tên công ty/đơn vị để xuất hóa đơn VAT.',
+                'tax_code' => 'Vui lòng nhập mã số thuế để xuất hóa đơn VAT.',
+                'address' => 'Vui lòng nhập địa chỉ xuất hóa đơn VAT.',
+                'email' => 'Vui lòng nhập Email nhận hóa đơn VAT.',
+            ])->first(fn (string $message, string $field): bool => ! filled($vatInvoice[$field] ?? null));
+
+            if ($missingVatField) {
+                return response()->json(['message' => $missingVatField], 422);
+            }
+        }
 
         $calculatedSubtotal = collect($data['items'])->sum(fn (array $item): int => (int) $item['price'] * (int) $item['quantity']);
         $shipping = (int) $data['shipping'];
@@ -62,7 +84,11 @@ class OrderController extends Controller
             return response()->json(['message' => 'Dữ liệu đơn hàng không hợp lệ.'], 422);
         }
 
-        $order = $db->transaction(function () use ($request, $data): Order {
+        $vatAmount = $vatRequested
+            ? (int) round(((int) $data['subtotal'] * self::VAT_RATE) / (100 + self::VAT_RATE))
+            : 0;
+
+        $order = $db->transaction(function () use ($request, $data, $vatRequested, $vatInvoice, $vatAmount): Order {
             do {
                 $code = 'TS'.now()->format('ymdHis').str()->upper(Str::random(3));
             } while (Order::query()->where('code', $code)->exists());
@@ -77,6 +103,13 @@ class OrderController extends Controller
                 'customer_address' => $data['customer']['address'],
                 'note' => $data['customer']['note'] ?? null,
                 'payment' => $data['payment'],
+                'vat_invoice_requested' => $vatRequested,
+                'vat_company_name' => $vatRequested ? $vatInvoice['company_name'] : null,
+                'vat_tax_code' => $vatRequested ? $vatInvoice['tax_code'] : null,
+                'vat_address' => $vatRequested ? $vatInvoice['address'] : null,
+                'vat_email' => $vatRequested ? $vatInvoice['email'] : null,
+                'vat_rate' => $vatRequested ? self::VAT_RATE : 0,
+                'vat_amount' => $vatAmount,
                 'paypal_order_id' => $data['paypal_order_id'] ?? null,
                 'subtotal' => $data['subtotal'],
                 'shipping' => $data['shipping'],
@@ -133,6 +166,15 @@ class OrderController extends Controller
                 'email' => $order->customer_email,
                 'address' => $order->customer_address,
                 'note' => $order->note,
+            ],
+            'vatInvoice' => [
+                'requested' => (bool) $order->vat_invoice_requested,
+                'companyName' => $order->vat_company_name,
+                'taxCode' => $order->vat_tax_code,
+                'address' => $order->vat_address,
+                'email' => $order->vat_email,
+                'rate' => (float) $order->vat_rate,
+                'amount' => $order->vat_amount,
             ],
             'items' => $order->items->map(fn ($item): array => [
                 'id' => $item->product_id ?? $item->id,

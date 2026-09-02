@@ -5,6 +5,8 @@ import Orders from '@/components/settings/Orders.vue';
 
 export type SettingsSection = 'profile' | 'security' | 'appearance' | 'orders';
 
+const SETTINGS_STORAGE_KEY = 'techstore.settings.section';
+
 const settingsNavItems: { key: SettingsSection; title: string; description: string; icon: typeof UserRound }[] = [
     { key: 'profile', title: 'Thông tin cá nhân', description: 'Hồ sơ', icon: UserRound },
     { key: 'security', title: 'Bảo mật', description: 'Mật khẩu & bảo vệ', icon: ShieldCheck },
@@ -12,35 +14,76 @@ const settingsNavItems: { key: SettingsSection; title: string; description: stri
     { key: 'orders', title: 'Đơn hàng', description: 'Lịch sử & hóa đơn', icon: ReceiptText },
 ];
 
+function isSettingsSection(value: string | null): value is SettingsSection {
+    return value !== null && settingsNavItems.some((item) => item.key === value);
+}
+
 function readSectionFromUrl(): SettingsSection {
     if (typeof window === 'undefined') return 'profile';
-    const value = new URLSearchParams(window.location.search).get('section');
-    return settingsNavItems.some((item) => item.key === value) ? value as SettingsSection : 'profile';
+
+    const urlValue = new URLSearchParams(window.location.search).get('section');
+    if (isSettingsSection(urlValue)) return urlValue;
+
+    try {
+        const storedValue = window.sessionStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (isSettingsSection(storedValue)) return storedValue;
+    } catch {
+        // Ignore storage restrictions; the URL remains the source of truth.
+    }
+
+    return 'profile';
 }
 
 const activeSection = ref<SettingsSection>(readSectionFromUrl());
 provide('techstore-settings-section', activeSection);
 
-function syncSectionFromUrl() {
-    activeSection.value = readSectionFromUrl();
-    if (typeof document !== 'undefined') document.body.dataset.techstoreSettingsSection = activeSection.value;
+function syncSectionFromUrl(): void {
+    const section = readSectionFromUrl();
+    activeSection.value = section;
+
+    if (typeof document !== 'undefined') {
+        document.body.dataset.techstoreSettingsSection = section;
+    }
+
+    if (typeof window !== 'undefined') {
+        try {
+            window.sessionStorage.setItem(SETTINGS_STORAGE_KEY, section);
+        } catch {
+            // Ignore storage restrictions.
+        }
+    }
 }
 
-function selectSection(section: SettingsSection) {
+function selectSection(section: SettingsSection): void {
+    if (activeSection.value === section) return;
+
     activeSection.value = section;
-    if (typeof document !== 'undefined') document.body.dataset.techstoreSettingsSection = section;
+
+    if (typeof document !== 'undefined') {
+        document.body.dataset.techstoreSettingsSection = section;
+    }
+
     if (typeof window !== 'undefined') {
         const url = section === 'profile' ? '/settings/profile' : `/settings/profile?section=${section}`;
-        window.history.replaceState(window.history.state, '', url);
+        window.history.replaceState({ ...(window.history.state ?? {}), settingsSection: section }, '', url);
+        try {
+            window.sessionStorage.setItem(SETTINGS_STORAGE_KEY, section);
+        } catch {
+            // Ignore storage restrictions.
+        }
     }
 }
 
 onMounted(() => {
     syncSectionFromUrl();
     window.addEventListener('popstate', syncSectionFromUrl);
+    window.addEventListener('pageshow', syncSectionFromUrl);
 });
 
-onBeforeUnmount(() => window.removeEventListener('popstate', syncSectionFromUrl));
+onBeforeUnmount(() => {
+    window.removeEventListener('popstate', syncSectionFromUrl);
+    window.removeEventListener('pageshow', syncSectionFromUrl);
+});
 </script>
 
 <template>

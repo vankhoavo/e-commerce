@@ -11,6 +11,7 @@ use App\Models\ShippingFee;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -23,13 +24,11 @@ class AdminController extends Controller
         $year = now()->year;
         $ordersByMonth = array_fill(1, 12, 0);
         $revenueByMonth = array_fill(1, 12, 0);
-
         Order::query()->whereYear('created_at', $year)->get(['created_at', 'total'])->each(function (Order $order) use (&$ordersByMonth, &$revenueByMonth): void {
             $month = (int) $order->created_at->month;
             $ordersByMonth[$month]++;
             $revenueByMonth[$month] += (int) $order->total;
         });
-
         return Inertia::render('admin/Dashboard', [
             'stats' => [
                 'orders' => Order::count(),
@@ -37,11 +36,7 @@ class AdminController extends Controller
                 'customers' => User::query()->where('role', UserRole::CUSTOMER->value)->count(),
                 'products' => AdminProduct::count(),
             ],
-            'charts' => [
-                'months' => array_map(fn (int $month): string => 'T'.$month, range(1, 12)),
-                'orders' => array_values($ordersByMonth),
-                'revenue' => array_values($revenueByMonth),
-            ],
+            'charts' => ['months' => array_map(fn (int $month): string => 'T'.$month, range(1, 12)), 'orders' => array_values($ordersByMonth), 'revenue' => array_values($revenueByMonth)],
             'recentOrders' => Order::query()->latest()->limit(6)->get(['id', 'code', 'customer_name', 'status', 'total', 'created_at']),
         ]);
     }
@@ -99,12 +94,7 @@ class AdminController extends Controller
 
     public function couponStore(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'code' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:coupons,code'], 'type' => ['required', Rule::in(['percent', 'fixed'])],
-            'value' => ['required', 'integer', 'min:1'], 'min_order_amount' => ['required', 'integer', 'min:0'],
-            'max_discount_amount' => ['nullable', 'integer', 'min:0'], 'usage_limit' => ['nullable', 'integer', 'min:1'],
-            'starts_at' => ['nullable', 'date'], 'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-        ]);
+        $data = $request->validate(['code' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:coupons,code'], 'type' => ['required', Rule::in(['percent', 'fixed'])], 'value' => ['required', 'integer', 'min:1'], 'min_order_amount' => ['required', 'integer', 'min:0'], 'max_discount_amount' => ['nullable', 'integer', 'min:0'], 'usage_limit' => ['nullable', 'integer', 'min:1'], 'starts_at' => ['nullable', 'date'], 'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at']]);
         if ($data['type'] === 'percent' && $data['value'] > 100) return back()->withErrors(['value' => 'Phần trăm giảm không được vượt quá 100.']);
         Coupon::create([...$data, 'code' => Str::upper($data['code'])]);
         return back()->with('success', 'Đã thêm mã giảm giá.');
@@ -166,18 +156,32 @@ class AdminController extends Controller
     public function orderApprove(Order $order): RedirectResponse
     {
         abort_unless(in_array($order->status, ['Chờ xử lý', 'Trả hàng'], true), 422, 'Đơn hàng không ở trạng thái có thể duyệt.');
-        $order->update(['status' => 'Đã duyệt']);
-        return back()->with('success', 'Đã duyệt đơn hàng.');
+        DB::transaction(function () use ($order): void {
+            $order->load('items');
+            foreach ($order->items as $item) {
+                if (! $item->product_id) continue;
+                $product = AdminProduct::query()->lockForUpdate()->find($item->product_id);
+                if (! $product) continue;
+                if ($product->stock < $item->quantity) abort(422, 'Tồn kho không đủ cho sản phẩm: '.$product->name);
+                $product->decrement('stock', $item->quantity);
+            }
+            $order->update(['status' => 'Đã duyệt']);
+        });
+        return back()->with('success', 'Đã duyệt đơn hàng và cập nhật tồn kho.');
+    }
+
+    public function inventory(): Response
+    {
+        $soldStatuses = ['Đã duyệt', 'Đang giao', 'Đã giao', 'Hoàn tất'];
+        $soldByProduct = DB::table('order_items')->join('orders', 'orders.id', '=', 'order_items.order_id')->whereIn('orders.status', $soldStatuses)->select('order_items.product_id', DB::raw('SUM(order_items.quantity) as sold_quantity'))->groupBy('order_items.product_id')->pluck('sold_quantity', 'order_items.product_id');
+        $products = AdminProduct::query()->with('category:id,name')->orderBy('stock')->get()->map(fn (AdminProduct $product) => [
+            'id' => $product->id, 'name' => $product->name, 'sku' => $product->sku, 'image' => $product->image, 'category' => $product->category?->name ?? 'Chưa phân loại', 'stock' => (int) $product->stock, 'sold' => (int) ($soldByProduct[$product->id] ?? 0), 'price' => (int) $product->price, 'is_active' => (bool) $product->is_active,
+        ]);
+        return Inertia::render('admin/Inventory', ['products' => $products, 'summary' => ['stockUnits' => (int) $products->sum('stock'), 'soldUnits' => (int) $products->sum('sold'), 'stockValue' => (int) $products->sum(fn (array $p) => $p['stock'] * $p['price']), 'lowStock' => (int) $products->where('stock', '<', 10)->count()]]);
     }
 
     private function productRules(): array
     {
-        return [
-            'category_id' => ['required', 'integer', 'exists:product_categories,id'], 'name' => ['required', 'string', 'max:255'],
-            'sku' => ['required', 'string', 'max:64', 'unique:admin_products,sku'], 'brand' => ['nullable', 'string', 'max:100'],
-            'price' => ['required', 'integer', 'min:0'], 'old_price' => ['nullable', 'integer', 'gte:price'], 'stock' => ['required', 'integer', 'min:0'],
-            'image' => ['nullable', 'string', 'max:2000'], 'short_description' => ['nullable', 'string', 'max:2000'], 'description' => ['nullable', 'string'],
-            'specs' => ['nullable', 'array'],
-        ];
+        return ['category_id' => ['required', 'integer', 'exists:product_categories,id'], 'name' => ['required', 'string', 'max:255'], 'sku' => ['required', 'string', 'max:64', 'unique:admin_products,sku'], 'brand' => ['nullable', 'string', 'max:100'], 'price' => ['required', 'integer', 'min:0'], 'old_price' => ['nullable', 'integer', 'gte:price'], 'stock' => ['required', 'integer', 'min:0'], 'image' => ['nullable', 'string', 'max:2000'], 'short_description' => ['nullable', 'string', 'max:2000'], 'description' => ['nullable', 'string'], 'specs' => ['nullable', 'array']];
     }
 }

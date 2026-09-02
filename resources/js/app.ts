@@ -8,7 +8,6 @@ import AdminLayout from '@/layouts/AdminLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import ClientLayout from '@/layouts/ClientLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
-import { initAirDatepicker } from '@/lib/air-datepicker';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TechStore';
 
@@ -25,16 +24,12 @@ function revealApp() {
 }
 
 router.on('start', () => setPageLoading(true));
-router.on('finish', () => {
-    setPageLoading(false);
-    initAirDatepicker();
-});
+router.on('finish', () => setPageLoading(false));
 router.on('error', () => setPageLoading(false));
 router.on('invalid', () => setPageLoading(false));
 
 if (typeof window !== 'undefined') {
     void import('bootstrap');
-    window.addEventListener('load', initAirDatepicker, { once: true });
 }
 
 void createInertiaApp({
@@ -48,5 +43,4 @@ void createInertiaApp({
     progress: { color: '#2563eb' },
 }).then(() => {
     revealApp();
-    initAirDatepicker();
 });

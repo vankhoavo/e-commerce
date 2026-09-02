@@ -41,7 +41,11 @@ function selectSection(section: SettingsSection) {
     }
 }
 
-onMounted(() => selectSection(readSectionFromUrl()));
+onMounted(() => {
+    const section = readSectionFromUrl();
+    activeSection.value = section;
+    document.body.dataset.techstoreSettingsSection = section;
+});
 </script>
 
 <template>

@@ -129,7 +129,7 @@ async function checkGoogleEmail() {
 
         <div class="register-field">
             <label for="password" class="register-label">Mật khẩu</label>
-            <div :class="['register-input-wrap', { 'is-valid': passwordReady, 'is-invalid': password.value && !passwordReady }]">
+            <div :class="['register-input-wrap', { 'is-valid': passwordReady, 'is-invalid': password && !passwordReady }]">
                 <i class="bi bi-lock" />
                 <input id="password" v-model="password" :type="showPassword ? 'text' : 'password'" name="password" class="register-input" required autocomplete="new-password" placeholder="Nhập mật khẩu" :passwordrules="passwordRules" />
                 <button type="button" class="password-toggle" :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPassword = !showPassword"><i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" /></button>

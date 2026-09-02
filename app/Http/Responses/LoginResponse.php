@@ -19,7 +19,6 @@ class LoginResponse implements LoginResponseContract
 
         $user = $request->user();
 
-        // Tài khoản quản trị dùng username "admin" và không phụ thuộc xác minh email.
         if ($user?->isAdmin()) {
             return redirect()->to('/admin');
         }

@@ -46,11 +46,13 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register_and_are_sent_to_login()
     {
+        $password = 'TechStore#2026';
+
         $response = $this->post(route('register.store'), [
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
+            'password' => $password,
+            'password_confirmation' => $password,
         ]);
 
         $response->assertRedirect(route('login'));
@@ -61,6 +63,7 @@ class RegistrationTest extends TestCase
 
     public function test_google_linked_email_can_create_an_email_password_login()
     {
+        $password = 'TechStore#2026';
         $user = User::factory()->create([
             'email' => 'google@example.com',
             'google_id' => 'google-test-id',
@@ -70,8 +73,8 @@ class RegistrationTest extends TestCase
         $response = $this->post(route('register.store'), [
             'name' => 'Google User',
             'email' => 'google@example.com',
-            'password' => 'Password1',
-            'password_confirmation' => 'Password1',
+            'password' => $password,
+            'password_confirmation' => $password,
         ]);
 
         $response->assertRedirect(route('login'));
@@ -79,7 +82,7 @@ class RegistrationTest extends TestCase
         $this->assertGuest();
 
         $user->refresh();
-        $this->assertTrue(Hash::check('Password1', $user->password));
+        $this->assertTrue(Hash::check($password, $user->password));
         $this->assertSame('google-test-id', $user->google_id);
     }
 

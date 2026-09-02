@@ -4,18 +4,23 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table): void {
-            $table->date('birth_date')->nullable()->after('phone');
-        });
+        if (! Schema::hasColumn('users', 'birth_date')) {
+            Schema::table('users', function (Blueprint $table): void {
+                $table->date('birth_date')->nullable()->after('email');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table): void {
-            $table->dropColumn('birth_date');
-        });
+        if (Schema::hasColumn('users', 'birth_date')) {
+            Schema::table('users', function (Blueprint $table): void {
+                $table->dropColumn('birth_date');
+            });
+        }
     }
 };

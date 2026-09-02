@@ -24,16 +24,26 @@ function revealApp() {
     document.documentElement.classList.remove('techstore-booting');
 }
 
+function initBirthDatePickerSoon(): void {
+    if (typeof window === 'undefined') return;
+    initFlexibleBirthDatePicker();
+    window.setTimeout(() => initFlexibleBirthDatePicker(), 50);
+    window.setTimeout(() => initFlexibleBirthDatePicker(), 250);
+    window.setTimeout(() => initFlexibleBirthDatePicker(), 750);
+    window.setTimeout(() => initFlexibleBirthDatePicker(), 1500);
+}
+
 router.on('start', () => setPageLoading(true));
 router.on('finish', () => {
     setPageLoading(false);
-    requestAnimationFrame(() => initFlexibleBirthDatePicker());
+    initBirthDatePickerSoon();
 });
 router.on('error', () => setPageLoading(false));
 router.on('invalid', () => setPageLoading(false));
 
 if (typeof window !== 'undefined') {
     void import('bootstrap');
+    window.addEventListener('load', initBirthDatePickerSoon, { once: false });
 }
 
 void createInertiaApp({
@@ -47,5 +57,5 @@ void createInertiaApp({
     progress: { color: '#2563eb' },
 }).then(() => {
     revealApp();
-    requestAnimationFrame(() => initFlexibleBirthDatePicker());
+    initBirthDatePickerSoon();
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Settings, UserRound, ShieldCheck, Palette, ReceiptText } from '@lucide/vue';
-import { provide, ref } from 'vue';
+import { onBeforeUnmount, onMounted, provide, ref } from 'vue';
 import Orders from '@/components/settings/Orders.vue';
 
 export type SettingsSection = 'profile' | 'security' | 'appearance' | 'orders';
@@ -21,6 +21,13 @@ function readSectionFromUrl(): SettingsSection {
 const activeSection = ref<SettingsSection>(readSectionFromUrl());
 provide('techstore-settings-section', activeSection);
 
+function syncSectionFromUrl() {
+    activeSection.value = readSectionFromUrl();
+    if (typeof document !== 'undefined') {
+        document.body.dataset.techstoreSettingsSection = activeSection.value;
+    }
+}
+
 function selectSection(section: SettingsSection) {
     activeSection.value = section;
 
@@ -34,7 +41,14 @@ function selectSection(section: SettingsSection) {
     }
 }
 
-selectSection(activeSection.value);
+onMounted(() => {
+    syncSectionFromUrl();
+    window.addEventListener('popstate', syncSectionFromUrl);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('popstate', syncSectionFromUrl);
+});
 </script>
 
 <template>

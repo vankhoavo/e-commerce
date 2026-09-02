@@ -8,6 +8,7 @@ use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Controllers\Teams\TeamMemberController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
@@ -17,6 +18,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/email/verify', [EmailChangeController::class, 'edit'])->name('email-change.edit');
     Route::post('settings/email/verify', [EmailChangeController::class, 'verify'])->middleware('throttle:6,1')->name('email-change.verify');
     Route::post('settings/email/resend', [EmailChangeController::class, 'resend'])->middleware('throttle:3,1')->name('email-change.resend');
+    Route::get('settings/orders', fn () => Inertia::render('settings/Orders'))->name('orders.index');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -45,7 +47,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('settings/teams/{team}/switch', [TeamController::class, 'switch'])->name('teams.switch');
         Route::delete('settings/teams/{team}/leave', [TeamController::class, 'leave'])->name('teams.leave');
         Route::patch('settings/teams/{team}/members/{user}', [TeamMemberController::class, 'update'])->name('teams.members.update');
-        Route::delete('settings/teams/{team}/members/{user}', [TeamMemberController::class, 'destroy'])->name('teams.members.destroy');
+        Route::delete('settings/teams/{team}/members/{user}/', [TeamMemberController::class, 'destroy'])->name('teams.members.destroy');
         Route::post('settings/teams/{team}/invitations', [TeamInvitationController::class, 'store'])->name('teams.invitations.store');
         Route::delete('settings/teams/{team}/invitations/{invitation}', [TeamInvitationController::class, 'destroy'])->name('teams.invitations.destroy');
     });

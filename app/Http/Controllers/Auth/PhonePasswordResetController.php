@@ -38,35 +38,41 @@ class PhonePasswordResetController
         }
         RateLimiter::hit($key, 300);
 
-        $user = User::query()->where('phone', $phone)->first();
+        $storedCandidates = array_values(array_unique([
+            $phone,
+            ltrim($phone, '+'),
+            $phone !== '' && Str::startsWith($phone, '+84') ? '0'.substr($phone, 3) : $phone,
+        ]));
+        $user = User::query()->whereIn('phone', $storedCandidates)->first();
         if (! $user || ! $user->is_active) {
             return back()->withErrors(['phone' => 'Không tìm thấy tài khoản đang hoạt động với số điện thoại này.']);
         }
 
+        $canonicalPhone = $this->normalizePhone((string) $user->phone);
         PhonePasswordResetToken::query()
-            ->where('phone', $phone)
+            ->where('phone', $canonicalPhone)
             ->whereNull('used_at')
             ->delete();
 
         $code = (string) random_int(100000, 999999);
         PhonePasswordResetToken::query()->create([
             'user_id' => $user->id,
-            'phone' => $phone,
+            'phone' => $canonicalPhone,
             'code_hash' => Hash::make($code),
             'expires_at' => now()->addMinutes(10),
             'attempts' => 0,
         ]);
 
         try {
-            $sms->send($phone, "TechStore: Ma OTP khoi phuc mat khau cua ban la {$code}. Ma co hieu luc trong 10 phut.");
+            $sms->send($canonicalPhone, "TechStore: Ma OTP khoi phuc mat khau cua ban la {$code}. Ma co hieu luc trong 10 phut.");
         } catch (\Throwable $e) {
             report($e);
-            PhonePasswordResetToken::query()->where('phone', $phone)->whereNull('used_at')->delete();
+            PhonePasswordResetToken::query()->where('phone', $canonicalPhone)->whereNull('used_at')->delete();
             return back()->withErrors(['phone' => 'Không thể gửi mã OTP. Vui lòng kiểm tra cấu hình SMS.']);
         }
 
         session([
-            'phone_password_reset_phone' => $phone,
+            'phone_password_reset_phone' => $canonicalPhone,
             'phone_password_reset_user_id' => $user->id,
         ]);
 

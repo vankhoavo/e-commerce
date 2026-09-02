@@ -10,6 +10,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import ClientLayout from '@/layouts/ClientLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initFlexibleBirthDatePicker } from '@/lib/flexible-birth-date';
+import { initAvatarFallback } from '@/lib/avatar-fallback';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TechStore';
 
@@ -44,6 +45,7 @@ router.on('invalid', () => setPageLoading(false));
 
 if (typeof window !== 'undefined') {
     void import('bootstrap');
+    initAvatarFallback();
     window.addEventListener('load', initBirthDatePickerSoon, { once: false });
 }
 

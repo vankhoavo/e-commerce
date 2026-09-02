@@ -5,8 +5,8 @@ namespace App\Actions\Fortify;
 use App\Concerns\PasswordValidationRules;
 use App\Models\User;
 use App\Services\EmailOtpService;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -52,6 +52,7 @@ class CreateNewUser implements CreatesNewUsers
             $googleUser->forceFill([
                 'name' => $input['name'],
                 'password' => $input['password'],
+                'birth_date' => $googleUser->birth_date ?: today(),
             ])->save();
 
             return $googleUser->fresh();
@@ -61,6 +62,7 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $email,
             'password' => $input['password'],
+            'birth_date' => today(),
         ]);
 
         $this->emailOtpService->send($user, $user->email);

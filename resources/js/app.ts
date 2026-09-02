@@ -8,6 +8,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import ClientLayout from '@/layouts/ClientLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { initFlexibleBirthDatePicker } from '@/lib/flexible-birth-date';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TechStore';
 
@@ -24,7 +25,10 @@ function revealApp() {
 }
 
 router.on('start', () => setPageLoading(true));
-router.on('finish', () => setPageLoading(false));
+router.on('finish', () => {
+    setPageLoading(false);
+    requestAnimationFrame(() => initFlexibleBirthDatePicker());
+});
 router.on('error', () => setPageLoading(false));
 router.on('invalid', () => setPageLoading(false));
 
@@ -43,4 +47,5 @@ void createInertiaApp({
     progress: { color: '#2563eb' },
 }).then(() => {
     revealApp();
+    requestAnimationFrame(() => initFlexibleBirthDatePicker());
 });

@@ -51,8 +51,10 @@ selectSection(activeSection.value);
             </div>
         </nav>
         <main class="settings-page-content">
-            <slot />
-            <Orders v-show="activeSection === 'orders'" />
+            <div v-if="activeSection !== 'orders'">
+                <slot />
+            </div>
+            <Orders v-else />
         </main>
     </div>
 </template>

@@ -7,3 +7,8 @@ button,a,input,select,textarea{outline:none}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
 .nav-cart:focus,.nav-cart:focus-visible,.account-chip:focus,.account-chip:focus-visible,.shop-brand:focus,.shop-brand:focus-visible{outline:0!important}
 .auth-content a{text-decoration:none!important}
+/* Registration fields: keep focus clean and avoid the double blue browser/component ring. */
+.register-input-wrap:focus-within{border-color:#8fb2f4!important;box-shadow:none!important}
+.register-input-wrap .register-input:focus,.register-input-wrap .register-input:focus-visible{outline:0!important;box-shadow:none!important}
+/* Keep custom password controls clean without a black/blue browser outline. */
+.password-toggle:focus,.password-toggle:focus-visible,.login-password-eye:focus,.login-password-eye:focus-visible{outline:0!important;box-shadow:none!important}

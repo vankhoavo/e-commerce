@@ -29,13 +29,15 @@ function selectSection(section: SettingsSection) {
     }
 
     if (typeof window !== 'undefined') {
-        if (section === 'orders') {
-            window.location.assign('/settings/orders?section=orders');
+        const targetUrl = section === 'orders' ? '/settings/orders?section=orders' : section === 'profile' ? '/settings/profile' : `/settings/profile?section=${section}`;
+        const isOrdersPage = window.location.pathname === '/settings/orders';
+
+        if (isOrdersPage || section === 'orders') {
+            window.location.assign(targetUrl);
             return;
         }
 
-        const url = section === 'profile' ? '/settings/profile' : `/settings/profile?section=${section}`;
-        window.history.replaceState(window.history.state, '', url);
+        window.history.replaceState(window.history.state, '', targetUrl);
     }
 }
 

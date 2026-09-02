@@ -1,0 +1,9 @@
+/* Global TechStore UI fixes. Keep the original light palette. */
+a,
+a:hover,
+a:active,
+a:visited{text-decoration:none!important}
+button,a,input,select,textarea{outline:none}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.nav-cart:focus,.nav-cart:focus-visible,.account-chip:focus,.account-chip:focus-visible,.shop-brand:focus,.shop-brand:focus-visible{outline:0!important}
+.auth-content a{text-decoration:none!important}

@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\Auth\EmailVerificationOtpController;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\PhonePasswordResetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PayPalController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -16,10 +19,23 @@ Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->middlewar
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('guest')->name('google.callback');
 Route::get('/auth/google/check-email', [GoogleAuthController::class, 'checkEmail'])->middleware('guest')->name('google.check-email');
 
+Route::get('/forgot-password/phone', [PhonePasswordResetController::class, 'showRequest'])->middleware('guest')->name('password.phone.request');
+Route::post('/forgot-password/phone', [PhonePasswordResetController::class, 'requestCode'])->middleware(['guest', 'throttle:3,5'])->name('password.phone.send');
+Route::get('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'showVerify'])->middleware('guest')->name('password.phone.verify');
+Route::post('/forgot-password/phone/verify', [PhonePasswordResetController::class, 'verifyCode'])->middleware(['guest', 'throttle:6,1'])->name('password.phone.verify.submit');
+Route::get('/forgot-password/phone/reset', [PhonePasswordResetController::class, 'showReset'])->middleware('guest')->name('password.phone.reset');
+Route::post('/forgot-password/phone/reset', [PhonePasswordResetController::class, 'resetPassword'])->middleware(['guest', 'throttle:6,1'])->name('password.phone.reset.submit');
+
 Route::middleware('auth')->group(function (): void {
     Route::get('/verify-email-otp', [EmailVerificationOtpController::class, 'show'])->name('email-verify-otp.show');
     Route::post('/verify-email-otp', [EmailVerificationOtpController::class, 'verify'])->middleware('throttle:6,1')->name('email-verify-otp.verify');
     Route::post('/verify-email-otp/resend', [EmailVerificationOtpController::class, 'resend'])->middleware('throttle:3,1')->name('email-verify-otp.resend');
+    Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->middleware('throttle:10,1')->name('paypal.orders.create');
+    Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->middleware('throttle:10,1')->name('paypal.orders.capture');
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
+    Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::patch('/orders/{order}/return', [OrderController::class, 'returnOrder'])->name('orders.return');
 });
 
 Route::get('/dashboard', [DashboardController::class, '__invoke'])->middleware(['auth', 'verified'])->name('dashboard');

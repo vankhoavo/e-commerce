@@ -1,333 +1,191 @@
-type CalendarState = { year: number; month: number };
 type CalendarDate = { year: number; month: number; day: number };
 
 const MONTHS = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
-const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const MIN_YEAR = -100_000_000_000;
-const MAX_YEAR = 100_000_000_000;
-
-function mod(value: number, divisor: number): number {
-    return ((value % divisor) + divisor) % divisor;
-}
-
-function isLeapYear(year: number): boolean {
-    return mod(year, 4) === 0 && (mod(year, 100) !== 0 || mod(year, 400) === 0);
-}
+const MIN_YEAR = 1900;
+const MAX_YEAR = new Date().getFullYear();
 
 function daysInMonth(year: number, month: number): number {
-    if (month === 1) return isLeapYear(year) ? 29 : 28;
+    if (month === 1) return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28;
     return [3, 5, 8, 10].includes(month) ? 30 : 31;
 }
 
 function isValidDate(year: number, month: number, day: number): boolean {
-    return Number.isSafeInteger(year)
-        && year >= MIN_YEAR
-        && year <= MAX_YEAR
-        && Number.isInteger(month)
-        && month >= 0
-        && month <= 11
-        && Number.isInteger(day)
-        && day >= 1
-        && day <= daysInMonth(year, month);
+    const today = new Date();
+    if (!Number.isInteger(year) || year < MIN_YEAR || year > today.getFullYear()) return false;
+    if (!Number.isInteger(month) || month < 0 || month > 11) return false;
+    if (!Number.isInteger(day) || day < 1 || day > daysInMonth(year, month)) return false;
+    if (year === today.getFullYear() && month > today.getMonth()) return false;
+    if (year === today.getFullYear() && month === today.getMonth() && day > today.getDate()) return false;
+    return true;
 }
 
-function weekdayMondayFirst(year: number, month: number, day: number): number {
-    let y = year;
-    let m = month + 1;
+function parseDate(value: string): CalendarDate | null {
+    const text = value.trim();
+    if (!text) return null;
 
-    if (m < 3) {
-        y -= 1;
-        m += 12;
-    }
-
-    const k = mod(y, 100);
-    const j = Math.floor(y / 100);
-    const h = mod(
-        day + Math.floor((13 * (m + 1)) / 5) + k + Math.floor(k / 4) + Math.floor(j / 4) + 5 * j,
-        7,
-    );
-
-    return mod(h + 5, 7);
-}
-
-function padYear(year: number): string {
-    return `${year < 0 ? '-' : ''}${String(Math.abs(year)).padStart(4, '0')}`;
-}
-
-function toIso(year: number, month: number, day: number): string {
-    return `${padYear(year)}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function fromIso(value: string): CalendarDate | null {
-    const match = value.trim().match(/^(-?\d+)-(\d{1,2})-(\d{1,2})$/);
+    let match = text.match(/^(\d{4,})-(\d{1,2})-(\d{1,2})$/);
+    if (!match) match = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4,})$/);
     if (!match) return null;
 
-    const year = Number(match[1]);
-    const month = Number(match[2]) - 1;
-    const day = Number(match[3]);
+    const iso = /^\d{4,}-/.test(text);
+    const year = Number(iso ? match[1] : match[3]);
+    const month = Number(iso ? match[2] : match[2]) - 1;
+    const day = Number(iso ? match[3] : match[1]);
 
     return isValidDate(year, month, day) ? { year, month, day } : null;
 }
 
-function parseDisplay(value: string): CalendarDate | null {
-    const cleaned = value.trim().replace(/\s+/g, ' ');
-    const match = cleaned.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](-?\d+)(?:\s*(TCN|BCE))?$/i);
+function toIso(date: CalendarDate): string {
+    return `${String(date.year).padStart(4, '0')}-${String(date.month + 1).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+}
 
-    if (!match) return fromIso(cleaned);
+function toDisplay(date: CalendarDate | null): string {
+    if (!date) return '';
+    return `${String(date.day).padStart(2, '0')}/${String(date.month + 1).padStart(2, '0')}/${date.year}`;
+}
 
-    const day = Number(match[1]);
-    const month = Number(match[2]) - 1;
-    let year = Number(match[3]);
+function createOption(value: string, label: string, selected = false): HTMLOptionElement {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    option.selected = selected;
+    return option;
+}
 
-    if (/^(TCN|BCE)$/i.test(match[4] ?? '')) {
-        year = -Math.abs(year);
+let activeModal: HTMLElement | null = null;
+let activeHidden: HTMLInputElement | null = null;
+let activeSelected: CalendarDate | null = null;
+
+function closeModal(): void {
+    activeModal?.remove();
+    activeModal = null;
+    activeHidden = null;
+    activeSelected = null;
+    document.body.style.removeProperty('overflow');
+}
+
+function saveModal(day: HTMLSelectElement, month: HTMLSelectElement, year: HTMLSelectElement): void {
+    const date: CalendarDate = {
+        day: Number(day.value),
+        month: Number(month.value),
+        year: Number(year.value),
+    };
+
+    if (!activeHidden || !isValidDate(date.year, date.month, date.day)) return;
+
+    activeHidden.value = toIso(date);
+    activeHidden.dispatchEvent(new Event('input', { bubbles: true }));
+    activeHidden.dispatchEvent(new Event('change', { bubbles: true }));
+    activeSelected = date;
+    closeModal();
+}
+
+function openModal(hidden: HTMLInputElement): void {
+    closeModal();
+    activeHidden = hidden;
+    activeSelected = parseDate(hidden.value) ?? { year: 2001, month: 4, day: 4 };
+
+    const today = new Date();
+    if (!isValidDate(activeSelected.year, activeSelected.month, activeSelected.day)) {
+        activeSelected = { year: Math.min(2001, today.getFullYear()), month: Math.min(4, today.getMonth()), day: 1 };
     }
 
-    return isValidDate(year, month, day) ? { year, month, day } : null;
-}
+    const overlay = document.createElement('div');
+    overlay.className = 'birth-date-modal-overlay';
+    overlay.innerHTML = `
+        <div class="birth-date-modal" role="dialog" aria-modal="true" aria-labelledby="birth-date-title">
+            <div class="birth-date-modal-header">
+                <button type="button" class="birth-date-back" aria-label="Quay lại">‹</button>
+                <h2 id="birth-date-title">Chỉnh sửa ngày sinh của bạn</h2>
+                <button type="button" class="birth-date-close" aria-label="Đóng">×</button>
+            </div>
+            <p class="birth-date-description">Ngày sinh này sẽ được dùng cho các tài khoản và trang cá nhân trong Trung tâm tài khoản này. Bất kỳ chỉnh sửa nào mà bạn thay đổi đều sẽ áp dụng cho mọi trang cá nhân và tài khoản.</p>
+            <div class="birth-date-selectors">
+                <label class="birth-date-select"><span>Ngày</span><select class="birth-day" aria-label="Ngày"></select><b>⌄</b></label>
+                <label class="birth-date-select"><span>Tháng</span><select class="birth-month" aria-label="Tháng"></select><b>⌄</b></label>
+                <label class="birth-date-select"><span>Năm</span><select class="birth-year" aria-label="Năm"></select><b>⌄</b></label>
+            </div>
+            <button type="button" class="birth-date-save">Lưu</button>
+        </div>`;
 
-function displayDate(year: number, month: number, day: number): string {
-    return `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${Math.abs(year)}${year < 0 ? ' TCN' : ''}`;
-}
+    document.body.appendChild(overlay);
+    activeModal = overlay;
+    document.body.style.overflow = 'hidden';
 
-function currentDate(): CalendarDate {
-    const now = new Date();
-    return {
-        year: now.getFullYear(),
-        month: now.getMonth(),
-        day: now.getDate(),
-    };
-}
+    const day = overlay.querySelector<HTMLSelectElement>('.birth-day')!;
+    const month = overlay.querySelector<HTMLSelectElement>('.birth-month')!;
+    const year = overlay.querySelector<HTMLSelectElement>('.birth-year')!;
 
-function clampYear(year: number): number {
-    if (!Number.isFinite(year)) return 0;
-    return Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.trunc(year)));
-}
+    for (let index = 0; index < 12; index += 1) month.appendChild(createOption(String(index), MONTHS[index], index === activeSelected.month));
+    for (let value = 1; value <= 31; value += 1) day.appendChild(createOption(String(value), String(value), value === activeSelected.day));
 
-function buildPicker(original: HTMLElement): void {
-    const hidden = original.querySelector<HTMLInputElement>('input[name="birth_date"]');
-    if (!hidden) return;
-
-    const parent = original.parentElement;
-    if (!parent) return;
-
-    const existingWrapper = Array.from(parent.children).find(
-        (child) => child !== original && child instanceof HTMLElement && child.classList.contains('flexible-birth-picker'),
-    ) as HTMLElement | undefined;
-
-    if (existingWrapper) {
-        original.style.setProperty('display', 'none', 'important');
-        original.querySelector<HTMLElement>('.date-popover')?.style.setProperty('display', 'none', 'important');
-        return;
+    for (let value = MAX_YEAR; value >= MIN_YEAR; value -= 1) {
+        year.appendChild(createOption(String(value), String(value), value === activeSelected.year));
+    }
+    if (activeSelected.year < MIN_YEAR || activeSelected.year > MAX_YEAR) {
+        year.insertBefore(createOption(String(activeSelected.year), String(activeSelected.year), true), year.firstChild);
     }
 
-    original.style.setProperty('display', 'none', 'important');
-    original.querySelector<HTMLElement>('.date-popover')?.style.setProperty('display', 'none', 'important');
-
-    const parsed = parseDisplay(hidden.value);
-    const today = currentDate();
-    const state: CalendarState = {
-        year: parsed?.year ?? today.year,
-        month: parsed?.month ?? today.month,
+    const refreshDays = (): void => {
+        const selectedDay = Number(day.value || activeSelected?.day || 1);
+        const maximum = daysInMonth(Number(year.value), Number(month.value));
+        const current = Math.min(selectedDay, maximum);
+        day.innerHTML = '';
+        for (let value = 1; value <= maximum; value += 1) day.appendChild(createOption(String(value), String(value), value === current));
     };
-    let selected: CalendarDate | null = parsed;
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'flexible-birth-picker';
-    wrapper.dataset.birthDateWrapper = '1';
-    wrapper.innerHTML = `<div class="flexible-birth-input-row"><input class="flexible-birth-input" type="text" inputmode="text" autocomplete="bday" placeholder="dd/mm/yyyy" aria-label="Ngày sinh"><button class="flexible-birth-open" type="button" aria-label="Mở lịch"><span>▦</span></button></div><div class="flexible-birth-popover" hidden><div class="flexible-birth-head"><button class="flexible-birth-nav prev" type="button" aria-label="Tháng trước">‹</button><div class="flexible-birth-period"><select class="flexible-birth-month" aria-label="Chọn tháng"></select><input class="flexible-birth-year" type="number" inputmode="numeric" aria-label="Nhập năm" min="${MIN_YEAR}" max="${MAX_YEAR}" step="1"></div><button class="flexible-birth-nav next" type="button" aria-label="Tháng sau">›</button></div><div class="flexible-birth-week"></div><div class="flexible-birth-grid"></div><div class="flexible-birth-foot"><button class="flexible-birth-clear" type="button">Xóa</button><button class="flexible-birth-today" type="button">Hôm nay</button></div></div>`;
-
-    const input = wrapper.querySelector<HTMLInputElement>('.flexible-birth-input')!;
-    const openButton = wrapper.querySelector<HTMLButtonElement>('.flexible-birth-open')!;
-    const popover = wrapper.querySelector<HTMLDivElement>('.flexible-birth-popover')!;
-    const monthSelect = wrapper.querySelector<HTMLSelectElement>('.flexible-birth-month')!;
-    const yearInput = wrapper.querySelector<HTMLInputElement>('.flexible-birth-year')!;
-    const grid = wrapper.querySelector<HTMLDivElement>('.flexible-birth-grid')!;
-    const week = wrapper.querySelector<HTMLDivElement>('.flexible-birth-week')!;
-
-    MONTHS.forEach((name, index) => {
-        const option = document.createElement('option');
-        option.value = String(index);
-        option.textContent = name;
-        monthSelect.appendChild(option);
+    refreshDays();
+    year.addEventListener('change', refreshDays);
+    month.addEventListener('change', refreshDays);
+    overlay.querySelector<HTMLButtonElement>('.birth-date-save')!.addEventListener('click', () => saveModal(day, month, year));
+    overlay.querySelector<HTMLButtonElement>('.birth-date-back')!.addEventListener('click', closeModal);
+    overlay.querySelector<HTMLButtonElement>('.birth-date-close')!.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeModal();
     });
+}
 
-    WEEKDAYS.forEach((day) => {
-        const span = document.createElement('span');
-        span.textContent = day;
-        week.appendChild(span);
-    });
+function initBirthDateModal(): void {
+    if (typeof document === 'undefined') return;
 
-    const syncHidden = (value: string): void => {
-        hidden.value = value;
-        hidden.dispatchEvent(new Event('input', { bubbles: true }));
-        hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    const open = (event: Event): void => {
+        const target = event.target as HTMLElement | null;
+        const trigger = target?.closest<HTMLButtonElement>('.date-trigger');
+        if (!trigger) return;
+
+        const field = trigger.closest<HTMLElement>('.date-field');
+        const hidden = field?.querySelector<HTMLInputElement>('input[name="birth_date"]');
+        if (!hidden) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        if ('stopImmediatePropagation' in event) event.stopImmediatePropagation();
+        openModal(hidden);
     };
 
-    const syncInput = (): void => {
-        input.value = selected ? displayDate(selected.year, selected.month, selected.day) : '';
-        syncHidden(selected ? toIso(selected.year, selected.month, selected.day) : '');
-    };
+    document.removeEventListener('click', open, true);
+    document.addEventListener('click', open, true);
 
-    const render = (): void => {
-        monthSelect.value = String(state.month);
-        yearInput.value = String(state.year);
-        grid.innerHTML = '';
+    const submitGuard = (event: Event): void => {
+        const form = event.target as HTMLFormElement | null;
+        if (!form || form.tagName !== 'FORM') return;
+        const hidden = form.querySelector<HTMLInputElement>('input[name="birth_date"]');
+        if (!hidden) return;
 
-        const offset = weekdayMondayFirst(state.year, state.month, 1);
-        for (let index = 0; index < offset; index += 1) {
-            const blank = document.createElement('span');
-            blank.className = 'flexible-birth-empty';
-            grid.appendChild(blank);
-        }
-
-        for (let day = 1; day <= daysInMonth(state.year, state.month); day += 1) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = String(day);
-
-            if (selected && selected.year === state.year && selected.month === state.month && selected.day === day) {
-                button.classList.add('selected');
-            }
-
-            button.addEventListener('click', () => {
-                selected = { year: state.year, month: state.month, day };
-                syncInput();
-                popover.hidden = true;
-                render();
-                input.focus();
-            });
-
-            grid.appendChild(button);
-        }
-    };
-
-    const commitTypedValue = (): boolean => {
-        const value = parseDisplay(input.value);
-
-        if (!value) {
-            input.setCustomValidity(input.value.trim() ? 'Ngày sinh không hợp lệ. Dùng dd/mm/yyyy hoặc dd/mm/yyyy TCN.' : '');
-            if (!input.value.trim()) syncHidden('');
-            return false;
-        }
-
-        input.setCustomValidity('');
-        selected = value;
-        state.year = value.year;
-        state.month = value.month;
-        syncInput();
-        render();
-        return true;
-    };
-
-    const open = (): void => {
-        if (input.value.trim() && !commitTypedValue()) {
-            input.reportValidity();
+        const parsed = parseDate(hidden.value);
+        if (hidden.value.trim() && !parsed) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
             return;
         }
-
-        popover.hidden = false;
-        render();
+        if (parsed) hidden.value = toIso(parsed);
     };
 
-    syncInput();
-    render();
-
-    input.addEventListener('input', () => input.setCustomValidity(''));
-    input.addEventListener('change', commitTypedValue);
-    input.addEventListener('blur', commitTypedValue);
-    input.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            if (commitTypedValue()) popover.hidden = false;
-        }
-        if (event.key === 'Escape') popover.hidden = true;
-    });
-
-    openButton.addEventListener('click', open);
-
-    monthSelect.addEventListener('change', () => {
-        state.month = Number(monthSelect.value);
-        render();
-    });
-
-    yearInput.addEventListener('change', () => {
-        state.year = clampYear(Number(yearInput.value));
-        render();
-    });
-
-    wrapper.querySelector<HTMLButtonElement>('.prev')!.addEventListener('click', () => {
-        if (state.month === 0) {
-            state.month = 11;
-            state.year = clampYear(state.year - 1);
-        } else {
-            state.month -= 1;
-        }
-        render();
-    });
-
-    wrapper.querySelector<HTMLButtonElement>('.next')!.addEventListener('click', () => {
-        if (state.month === 11) {
-            state.month = 0;
-            state.year = clampYear(state.year + 1);
-        } else {
-            state.month += 1;
-        }
-        render();
-    });
-
-    wrapper.querySelector<HTMLButtonElement>('.flexible-birth-clear')!.addEventListener('click', () => {
-        selected = null;
-        input.value = '';
-        input.setCustomValidity('');
-        syncHidden('');
-        popover.hidden = true;
-    });
-
-    wrapper.querySelector<HTMLButtonElement>('.flexible-birth-today')!.addEventListener('click', () => {
-        selected = { ...today };
-        state.year = today.year;
-        state.month = today.month;
-        syncInput();
-        popover.hidden = true;
-        render();
-    });
-
-    const form = original.closest('form');
-    form?.addEventListener('submit', (event) => {
-        if (input.value.trim()) {
-            if (!commitTypedValue()) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                input.reportValidity();
-                return;
-            }
-        } else {
-            syncHidden('');
-        }
-    }, { capture: true });
-
-    document.addEventListener('click', (event) => {
-        if (!wrapper.contains(event.target as Node)) popover.hidden = true;
-    });
-
-    parent.insertBefore(wrapper, original.nextSibling);
+    document.removeEventListener('submit', submitGuard, true);
+    document.addEventListener('submit', submitGuard, true);
 }
 
 export function initFlexibleBirthDatePicker(): void {
     if (typeof document === 'undefined') return;
-
-    document.querySelectorAll<HTMLElement>('.date-picker').forEach(buildPicker);
-
-    if (!document.body.dataset.flexibleBirthObserver) {
-        document.body.dataset.flexibleBirthObserver = '1';
-        const observer = new MutationObserver(() => {
-            document.querySelectorAll<HTMLElement>('.date-picker').forEach(buildPicker);
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        window.setInterval(() => {
-            document.querySelectorAll<HTMLElement>('.date-picker').forEach(buildPicker);
-        }, 500);
-    }
+    initBirthDateModal();
 }

@@ -92,6 +92,7 @@ class GoogleAuthController
                 'is_active' => true,
                 'avatar' => data_get($googleUser, 'picture'),
                 'google_id' => $googleId,
+                'birth_date' => today(),
             ]);
             $user->forceFill(['email_verified_at' => now()])->save();
         } else {
@@ -100,6 +101,7 @@ class GoogleAuthController
                 'google_id' => $googleId,
                 'avatar' => data_get($googleUser, 'picture') ?: $user->avatar,
                 'email_verified_at' => $user->email_verified_at ?: now(),
+                'birth_date' => $user->birth_date ?: today(),
             ])->save();
         }
 

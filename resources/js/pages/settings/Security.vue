@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -112,14 +112,34 @@ defineOptions({
         </Form>
     </div>
 
-    <ManageTwoFactor
-        :canManageTwoFactor="canManageTwoFactor"
-        :requiresConfirmation="requiresConfirmation"
-        :twoFactorEnabled="twoFactorEnabled"
-    />
+    <div class="security-two-factor-wrap">
+        <ManageTwoFactor
+            :canManageTwoFactor="canManageTwoFactor"
+            :requiresConfirmation="requiresConfirmation"
+            :twoFactorEnabled="twoFactorEnabled"
+        />
+        <Link href="/forgot-password" class="security-recovery-link">
+            <span class="security-recovery-icon"><i class="bi bi-envelope-lock-fill" /></span>
+            <span class="security-recovery-copy"><strong>Quên mật khẩu?</strong><small>Khôi phục tài khoản bằng Email OTP.</small></span>
+            <i class="bi bi-arrow-right security-recovery-arrow" />
+        </Link>
+    </div>
 
     <ManagePasskeys
         :canManagePasskeys="canManagePasskeys"
         :passkeys="passkeys"
     />
 </template>
+
+<style scoped>
+.security-two-factor-wrap{width:100%;margin-top:24px}
+.security-recovery-link{display:flex;align-items:center;gap:11px;width:100%;margin-top:12px;padding:11px 12px;border:1px solid #e4e7ec;border-radius:11px;color:#344054;background:#fff;text-decoration:none;transition:.18s ease}
+.security-recovery-link:hover{border-color:#bfd3f8;color:#1d4ed8;background:#f8fbff;box-shadow:0 5px 14px rgba(37,99,235,.07);text-decoration:none}
+.security-recovery-link:focus,.security-recovery-link:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(37,99,235,.10);text-decoration:none}
+.security-recovery-icon{display:grid;width:32px;height:32px;flex:0 0 32px;place-items:center;border-radius:9px;color:#2563eb;background:#eff6ff;font-size:14px}
+.security-recovery-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:2px}
+.security-recovery-copy strong{font-size:10px;font-weight:850}
+.security-recovery-copy small{color:#98a2b3;font-size:8px;line-height:1.4}
+.security-recovery-arrow{color:#98a2b3;font-size:11px}
+.security-recovery-link:hover .security-recovery-arrow{color:#2563eb}
+</style>

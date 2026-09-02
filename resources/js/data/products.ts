@@ -21,8 +21,34 @@ export type Product = {
     source?: string;
 };
 
-const imageFor = (name: string) =>
-    `https://placehold.co/900x700/f4f7fb/172033?text=${encodeURIComponent(name)}`;
+const laptopImages = [
+    'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=1200&q=85',
+];
+
+const componentImages = [
+    'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1555617981-dac3880eac6e?auto=format&fit=crop&w=1200&q=85',
+];
+
+const accessoryImages = [
+    'https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1200&q=85',
+    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=85',
+];
+
+const imagesFor = (categorySlug: Product['categorySlug'], index: number) => {
+    const source = categorySlug === 'laptop' ? laptopImages : categorySlug === 'laptop-components' ? componentImages : accessoryImages;
+    return [
+        source[index % source.length],
+        source[(index + 1) % source.length],
+        source[(index + 2) % source.length],
+    ];
+};
 
 const laptopSeeds = [
     ['macbook-neo-13-a18-pro-8-256', 'MacBook Neo 13 inch A18 Pro 8GB/256GB', 'Apple', 18790000, 19490000, 'Mới'],
@@ -112,10 +138,11 @@ const buildProduct = (
             ? { 'Loại': 'Linh kiện laptop', 'Tương thích': 'Laptop tương thích', 'Bảo hành': '12 tháng' }
             : { 'Loại': 'Phụ kiện laptop', 'Tương thích': 'Laptop / MacBook', 'Bảo hành': '12 tháng' };
 
+    const gallery = imagesFor(categorySlug, nextId - 1);
     return {
         id: nextId++, slug, name, category, categorySlug, brand, price,
         ...(oldPrice ? { oldPrice } : {}),
-        image: imageFor(name), gallery: [imageFor(name)],
+        image: gallery[0], gallery,
         ...(badge ? { badge } : {}), rating: 4.7 + (nextId % 4) / 10,
         sold: 20 + ((nextId * 37) % 180), stock: 5 + ((nextId * 11) % 35),
         shortDescription, description: `${name}. Sản phẩm được xây dựng cho hệ thống TechStore và có thông tin kỹ thuật rõ ràng để khách hàng dễ lựa chọn.`, specs,

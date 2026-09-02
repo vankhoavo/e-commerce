@@ -18,23 +18,30 @@ function isSettingsSection(value: string | null): value is SettingsSection {
     return value !== null && settingsNavItems.some((item) => item.key === value);
 }
 
-function readSectionFromUrl(): SettingsSection {
+function readStoredSection(): SettingsSection | null {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const storedValue = window.sessionStorage.getItem(SETTINGS_STORAGE_KEY);
+        return isSettingsSection(storedValue) ? storedValue : null;
+    } catch {
+        return null;
+    }
+}
+
+function readInitialSection(): SettingsSection {
     if (typeof window === 'undefined') return 'profile';
 
     const urlValue = new URLSearchParams(window.location.search).get('section');
     if (isSettingsSection(urlValue)) return urlValue;
 
-    try {
-        const storedValue = window.sessionStorage.getItem(SETTINGS_STORAGE_KEY);
-        if (isSettingsSection(storedValue)) return storedValue;
-    } catch {
-        // Ignore storage restrictions.
-    }
+    const historyValue = window.history.state?.settingsSection;
+    if (typeof historyValue === 'string' && isSettingsSection(historyValue)) return historyValue;
 
-    return 'profile';
+    return readStoredSection() ?? 'profile';
 }
 
-const activeSection = ref<SettingsSection>(readSectionFromUrl());
+const activeSection = ref<SettingsSection>(readInitialSection());
 provide('techstore-settings-section', activeSection);
 
 function persistSection(section: SettingsSection): void {
@@ -51,8 +58,17 @@ function persistSection(section: SettingsSection): void {
     }
 }
 
-function syncSectionFromUrl(): void {
-    const section = readSectionFromUrl();
+function syncSectionFromNavigation(): void {
+    if (typeof window === 'undefined') return;
+
+    const urlValue = new URLSearchParams(window.location.search).get('section');
+    const historyValue = window.history.state?.settingsSection;
+    const section = isSettingsSection(urlValue)
+        ? urlValue
+        : typeof historyValue === 'string' && isSettingsSection(historyValue)
+            ? historyValue
+            : readStoredSection() ?? 'profile';
+
     activeSection.value = section;
     persistSection(section);
 }
@@ -64,20 +80,25 @@ function selectSection(section: SettingsSection): void {
     persistSection(section);
 
     if (typeof window !== 'undefined') {
-        const url = section === 'profile' ? '/settings/profile' : `/settings/profile?section=${section}`;
-        window.history.replaceState({ ...(window.history.state ?? {}), settingsSection: section }, '', url);
+        const url = new URL(window.location.href);
+        url.pathname = '/settings/profile';
+        if (section === 'profile') {
+            url.searchParams.delete('section');
+        } else {
+            url.searchParams.set('section', section);
+        }
+
+        window.history.pushState({ ...(window.history.state ?? {}), settingsSection: section }, '', `${url.pathname}${url.search}${url.hash}`);
     }
 }
 
 onMounted(() => {
-    syncSectionFromUrl();
-    window.addEventListener('popstate', syncSectionFromUrl);
-    window.addEventListener('pageshow', syncSectionFromUrl);
+    persistSection(activeSection.value);
+    window.addEventListener('popstate', syncSectionFromNavigation);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener('popstate', syncSectionFromUrl);
-    window.removeEventListener('pageshow', syncSectionFromUrl);
+    window.removeEventListener('popstate', syncSectionFromNavigation);
 });
 </script>
 

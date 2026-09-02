@@ -5,7 +5,6 @@ import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
-import { request } from '@/routes/password';
 
 defineOptions({ layout: { title: 'Đăng nhập tài khoản', description: 'Đăng nhập để tiếp tục mua sắm tại TechStore.' } });
 
@@ -21,7 +20,6 @@ function handleLoginSuccess() {
 
 defineProps<{
     status?: string;
-    canResetPassword: boolean;
 }>();
 </script>
 
@@ -62,8 +60,8 @@ defineProps<{
         <div>
             <label for="password" class="form-label mb-1">Mật khẩu</label>
             <PasswordInput id="password" name="password" class="form-control form-control-lg" required autocomplete="current-password" placeholder="Mật khẩu" />
-            <div v-if="canResetPassword" class="forgot-under-password">
-                <Link :href="request()"><i class="bi bi-key me-1" />Quên mật khẩu?</Link>
+            <div class="forgot-under-password">
+                <Link href="/forgot-password"><i class="bi bi-key me-1" />Quên mật khẩu?</Link>
             </div>
             <InputError :message="friendlyAuthError(errors.password)" />
         </div>

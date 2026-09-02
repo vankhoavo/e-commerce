@@ -10,7 +10,7 @@ defineOptions({
     },
 });
 
-defineProps<{ email?: string }>();
+defineProps<{ email?: string; status?: string }>();
 </script>
 
 <template>
@@ -24,6 +24,11 @@ defineProps<{ email?: string }>();
                 <h2>Xác minh Email</h2>
                 <p>Nhập mã OTP 6 số đã được gửi tới <strong>{{ email || 'Email của bạn' }}</strong>.</p>
             </div>
+        </div>
+
+        <div v-if="status" class="forgot-status">
+            <i class="bi bi-check-circle-fill" />
+            <span>{{ status }}</span>
         </div>
 
         <Form action="/forgot-password/verify" method="post" v-slot="{ errors, processing }" class="forgot-form">
@@ -55,6 +60,14 @@ defineProps<{ email?: string }>();
             </button>
         </Form>
 
+        <Form action="/forgot-password/verify/resend" method="post" v-slot="{ processing: resending }" class="resend-form">
+            <button type="submit" class="resend-button" :disabled="resending">
+                <span v-if="resending" class="spinner-border spinner-border-sm" />
+                <i v-else class="bi bi-arrow-clockwise" />
+                {{ resending ? 'Đang gửi lại...' : 'Gửi lại mã OTP' }}
+            </button>
+        </Form>
+
         <div class="forgot-note">
             <i class="bi bi-clock" />
             <span>Mã OTP có hiệu lực trong 10 phút và tối đa 5 lần nhập.</span>
@@ -81,9 +94,12 @@ defineProps<{ email?: string }>();
 .forgot-input i{margin-right:9px;color:#98a2b3}
 .forgot-input input{width:100%;border:0;outline:0;color:#344054;background:transparent;font-size:11px;letter-spacing:.18em}
 .forgot-submit{display:flex;align-items:center;justify-content:center;gap:7px;height:43px;border:0;border-radius:10px;color:#fff;background:linear-gradient(135deg,#2563eb,#4f46e5);box-shadow:0 8px 18px rgba(37,99,235,.18);font-size:11px;font-weight:850}
-.forgot-submit:disabled{opacity:.6}
+.forgot-submit:disabled,.resend-button:disabled{opacity:.6}
+.resend-form{margin-top:11px}
+.resend-button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:40px;border:1px solid #dbe4f0;border-radius:10px;color:#2563eb;background:#f8fbff;font-size:10px;font-weight:800}
 .forgot-note{display:flex;align-items:center;gap:7px;margin-top:15px;padding:10px;border-radius:9px;color:#667085;background:#f8fafc;font-size:9px}
 .forgot-note i{color:#2563eb}
+.forgot-status{display:flex;align-items:center;gap:8px;margin-top:16px;padding:10px 12px;border:1px solid #b7ebcc;border-radius:10px;color:#067647;background:#f0fdf4;font-size:10px}
 .forgot-back{margin-top:17px;padding-top:15px;border-top:1px solid #edf0f4;text-align:center}
 .forgot-back a{color:#2563eb;font-size:10px;font-weight:800;text-decoration:none}
 </style>

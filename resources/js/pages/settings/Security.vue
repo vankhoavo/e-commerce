@@ -11,6 +11,7 @@ import type { Props as ManagePasskeysProps } from '@/components/ManagePasskeys.v
 import ManagePasskeys from '@/components/ManagePasskeys.vue';
 import type { Props as ManageTwoFactorProps } from '@/components/ManageTwoFactor.vue';
 import ManageTwoFactor from '@/components/ManageTwoFactor.vue';
+import { inject, type Ref } from 'vue';
 
 // oxfmt-ignore
 type Props = {
@@ -18,7 +19,11 @@ type Props = {
 } & ManagePasskeysProps &
     ManageTwoFactorProps;
 
+type SettingsSection = 'profile' | 'security' | 'appearance' | 'orders';
+
 const props = defineProps<Props>();
+const activeSection = inject<Ref<SettingsSection>>('techstore-settings-section');
+if (activeSection) activeSection.value = 'security';
 
 defineOptions({
     layout: {

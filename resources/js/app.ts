@@ -25,7 +25,10 @@ function revealApp() {
 }
 
 router.on('start', () => setPageLoading(true));
-router.on('finish', () => setPageLoading(false));
+router.on('finish', () => {
+    setPageLoading(false);
+    initAirDatepicker();
+});
 router.on('error', () => setPageLoading(false));
 router.on('invalid', () => setPageLoading(false));
 

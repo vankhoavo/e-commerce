@@ -18,7 +18,7 @@ defineProps<{ status?: string }>();
 
     <div class="forgot-card">
         <div class="forgot-hero">
-            <div class="forgot-hero-icon"><i class="bi bi-envelope-lock-fill" /></div>
+            <div class="forgot-hero-icon"><i class="bi bi-envelope-fill" /></div>
             <div>
                 <span>TECHSTORE ACCOUNT</span>
                 <h2>Khôi phục mật khẩu</h2>

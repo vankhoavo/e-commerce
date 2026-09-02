@@ -13,7 +13,7 @@ return new class extends Migration
     {
         DB::table('users')
             ->whereRaw('LOWER(email) = ?', ['vankhoa.work@gmail.com'])
-            ->where('google_id', '!=', null)
+            ->whereNotNull('google_id')
             ->update([
                 'role' => UserRole::CUSTOMER->value,
                 'is_active' => true,

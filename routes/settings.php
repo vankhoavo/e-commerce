@@ -21,10 +21,22 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::get('settings/security', [SecurityController::class, 'edit'])->middleware(RequirePassword::class)->name('security.edit');
+
+    // Keep the four settings sections inside one styled Inertia page.
+    Route::get('settings/security', function () {
+        return redirect()->route('profile.edit', ['section' => 'security']);
+    })->middleware(RequirePassword::class)->name('security.edit');
+
     Route::put('settings/password', [SecurityController::class, 'update'])->middleware('throttle:6,1')->name('user-password.update');
-    Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
-    Route::get('settings/teams', [TeamController::class, 'index'])->name('teams.index');
+
+    Route::get('settings/appearance', function () {
+        return redirect()->route('profile.edit', ['section' => 'appearance']);
+    })->name('appearance.edit');
+
+    Route::get('settings/teams', function () {
+        return redirect()->route('profile.edit', ['section' => 'teams']);
+    })->name('teams.index');
+
     Route::post('settings/teams', [TeamController::class, 'store'])->name('teams.store');
     Route::middleware(\App\Http\Middleware\EnsureTeamMembership::class)->group(function () {
         Route::get('settings/teams/{team}', [TeamController::class, 'edit'])->name('teams.edit');

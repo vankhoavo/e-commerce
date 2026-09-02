@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Concerns\HasTeams;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +20,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $email
  * @property string|null $phone
  * @property string|null $address
+ * @property string|null $address_province
+ * @property string|null $address_ward
+ * @property string|null $address_detail
  * @property Carbon|null $birth_date
  * @property UserRole $role
  * @property bool $is_active
@@ -29,12 +31,12 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $email_verified_at
  * @property string $password
  */
-#[Fillable(['name', 'email', 'phone', 'address', 'birth_date', 'password', 'role', 'is_active', 'avatar', 'google_id', 'current_team_id'])]
+#[Fillable(['name', 'email', 'phone', 'address', 'address_province', 'address_ward', 'address_detail', 'birth_date', 'password', 'role', 'is_active', 'avatar', 'google_id'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasTeams, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     protected function casts(): array
     {

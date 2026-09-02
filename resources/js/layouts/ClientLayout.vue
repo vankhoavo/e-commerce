@@ -9,8 +9,18 @@ const page = usePage();
 const authUser = computed(() => (page.props as any).auth?.user ?? null);
 const submitSearch = () => { const value = search.value.trim(); router.visit(value ? `/products?search=${encodeURIComponent(value)}` : '/products'); mobileMenuOpen.value = false; };
 function readCartCount() { try { const cart = JSON.parse(localStorage.getItem('techstore_cart') ?? '[]'); cartCount.value = Array.isArray(cart) ? cart.reduce((total: number, item: any) => total + Number(item.quantity ?? 1), 0) : 0; } catch { cartCount.value = 0; } }
-onMounted(() => { readCartCount(); window.addEventListener('storage', readCartCount); window.addEventListener('techstore-cart-updated', readCartCount); });
-onUnmounted(() => { window.removeEventListener('storage', readCartCount); window.removeEventListener('techstore-cart-updated', readCartCount); });
+function guardGuestCart(event: MouseEvent) {
+    if (authUser.value) return;
+    const target = event.target as HTMLElement | null;
+    const button = target?.closest<HTMLElement>('.product-cart-action, .catalog-cart-btn, .add-cart-btn');
+    if (!button) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const returnTo = `${window.location.pathname}${window.location.search}`;
+    router.visit(`/login?redirect=${encodeURIComponent(returnTo)}`);
+}
+onMounted(() => { readCartCount(); window.addEventListener('storage', readCartCount); window.addEventListener('techstore-cart-updated', readCartCount); window.addEventListener('click', guardGuestCart, true); });
+onUnmounted(() => { window.removeEventListener('storage', readCartCount); window.removeEventListener('techstore-cart-updated', readCartCount); window.removeEventListener('click', guardGuestCart, true); });
 </script>
 
 <template>

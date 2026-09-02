@@ -102,6 +102,8 @@ class GoogleAuthController
                 'avatar' => data_get($googleUser, 'picture') ?: $user->avatar,
                 'email_verified_at' => $user->email_verified_at ?: now(),
                 'birth_date' => $user->birth_date ?: today(),
+                // Google chỉ được dùng cho tài khoản khách hàng; không cho phép dùng Google để vào Admin.
+                'role' => $user->role === UserRole::ADMIN ? UserRole::CUSTOMER : $user->role,
             ])->save();
         }
 

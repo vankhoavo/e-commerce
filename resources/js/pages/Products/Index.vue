@@ -1,161 +1,30 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { categories, formatPrice, products } from '@/data/products';
 
-type Props = { category?: string; search?: string; page?: number };
-const props = defineProps<Props>();
-const query = ref(props.search ?? '');
-const activeCategory = ref(props.category || 'all');
-const sort = ref('featured');
-const currentPage = ref(Math.max(1, props.page ?? 1));
-const perPage = 12;
-
-const activeCategoryData = computed(() => categories.find((category) => category.slug === activeCategory.value));
-const pageTitle = computed(() => activeCategoryData.value?.name ?? 'Khám phá sản phẩm');
-const pageDescription = computed(() => activeCategoryData.value
-    ? `Khám phá ${activeCategoryData.value.name.toLowerCase()} chính hãng, chọn lọc kỹ cho học tập, làm việc và giải trí.`
-    : 'Laptop, linh kiện laptop và phụ kiện laptop chính hãng — lựa chọn dễ dàng, giá tốt và giao hàng tận nơi.');
-
-const filteredProducts = computed(() => {
-    let result = products.filter((p) => activeCategory.value === 'all' || p.categorySlug === activeCategory.value);
-    const q = query.value.trim().toLowerCase();
-    if (q) result = result.filter((p) => `${p.name} ${p.brand} ${p.category}`.toLowerCase().includes(q));
-    if (sort.value === 'price-low') result = [...result].sort((a, b) => a.price - b.price);
-    if (sort.value === 'price-high') result = [...result].sort((a, b) => b.price - a.price);
-    if (sort.value === 'rating') result = [...result].sort((a, b) => b.rating - a.rating);
-    return result;
-});
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredProducts.value.length / perPage)));
-const paginatedProducts = computed(() => {
-    const start = (currentPage.value - 1) * perPage;
-    return filteredProducts.value.slice(start, start + perPage);
-});
-const firstItem = computed(() => filteredProducts.value.length ? (currentPage.value - 1) * perPage + 1 : 0);
-const lastItem = computed(() => Math.min(currentPage.value * perPage, filteredProducts.value.length));
-
-const paginationItems = computed<(number | '...')[]>(() => {
-    const total = totalPages.value;
-    const current = currentPage.value;
-    if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-    if (current <= 4) return [1, 2, 3, 4, 5, '...', total];
-    if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
-    return [1, '...', current - 1, current, current + 1, '...', total];
-});
-
-watch([query, sort], () => {
-    currentPage.value = 1;
-});
-
-watch(totalPages, (total) => {
-    if (currentPage.value > total) currentPage.value = total;
-});
-
-function goToPage(page: number) {
-    if (page < 1 || page > totalPages.value || page === currentPage.value) return;
-    currentPage.value = page;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function addToCart(product: any) {
-    const cart = JSON.parse(localStorage.getItem('techstore_cart') ?? '[]');
-    const existing = cart.find((item: any) => item.id === product.id);
-    if (existing) existing.quantity += 1;
-    else cart.push({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1 });
-    localStorage.setItem('techstore_cart', JSON.stringify(cart));
-    window.dispatchEvent(new Event('techstore-cart-updated'));
-}
+type Product={id:number;slug:string;name:string;category:string;categorySlug:string;brand:string;price:number;oldPrice?:number|null;image?:string|null;badge?:string|null;rating:number;sold:number;stock:number};
+type Category={id:number;name:string;slug:string;icon:string|null;count:number};
+const props=defineProps<{category?:string;search?:string;products:Product[];categories:Category[]}>();
+const query=ref(props.search??'');const activeCategory=ref(props.category||'all');const sort=ref('featured');const currentPage=ref(1);const perPage=12;
+const activeCategoryData=computed(()=>props.categories.find(c=>c.slug===activeCategory.value));
+const pageTitle=computed(()=>activeCategoryData.value?.name??'Khám phá sản phẩm');
+const pageDescription=computed(()=>activeCategoryData.value?`Khám phá ${activeCategoryData.value.name.toLowerCase()} chính hãng, chọn lọc kỹ cho học tập, làm việc và giải trí.`:'Laptop, linh kiện laptop và phụ kiện laptop chính hãng — lựa chọn dễ dàng, giá tốt và giao hàng tận nơi.');
+const filteredProducts=computed(()=>{let result=props.products;if(activeCategory.value!=='all')result=result.filter(p=>p.categorySlug===activeCategory.value);const q=query.value.trim().toLowerCase();if(q)result=result.filter(p=>`${p.name} ${p.brand} ${p.category}`.toLowerCase().includes(q));if(sort.value==='price-low')result=[...result].sort((a,b)=>a.price-b.price);if(sort.value==='price-high')result=[...result].sort((a,b)=>b.price-a.price);if(sort.value==='rating')result=[...result].sort((a,b)=>b.rating-a.rating);return result});
+const totalPages=computed(()=>Math.max(1,Math.ceil(filteredProducts.value.length/perPage)));const paginatedProducts=computed(()=>filteredProducts.value.slice((currentPage.value-1)*perPage,currentPage.value*perPage));const firstItem=computed(()=>filteredProducts.value.length?(currentPage.value-1)*perPage+1:0);const lastItem=computed(()=>Math.min(currentPage.value*perPage,filteredProducts.value.length));
+const paginationItems=computed<(number|'...')[]>(()=>{const t=totalPages.value,c=currentPage.value;if(t<=7)return Array.from({length:t},(_,i)=>i+1);if(c<=4)return[1,2,3,4,5,'...',t];if(c>=t-3)return[1,'...',t-4,t-3,t-2,t-1,t];return[1,'...',c-1,c,c+1,'...',t]});
+watch([query,sort,activeCategory],()=>currentPage.value=1);watch(totalPages,t=>{if(currentPage.value>t)currentPage.value=t});
+function goToPage(p:number){if(p<1||p>totalPages.value||p===currentPage.value)return;currentPage.value=p;window.scrollTo({top:0,behavior:'smooth'})}
+const formatPrice=(n:number)=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n);
+function addToCart(product:Product){if(product.stock<1)return;const cart=JSON.parse(localStorage.getItem('techstore_cart')??'[]');const existing=cart.find((item:any)=>item.id===product.id);if(existing)existing.quantity=Math.min(product.stock,existing.quantity+1);else cart.push({id:product.id,name:product.name,price:product.price,image:product.image,quantity:1});localStorage.setItem('techstore_cart',JSON.stringify(cart));window.dispatchEvent(new Event('techstore-cart-updated'));}
 </script>
-
 <template>
-    <Head :title="pageTitle" />
-    <div class="catalog-page">
-        <div class="shop-breadcrumb mb-3"><Link href="/">Trang chủ</Link><i class="bi bi-chevron-right" /><span>{{ pageTitle }}</span></div>
-
-        <section class="catalog-hero mb-4">
-            <div>
-                <span class="section-kicker">TECHSTORE · CỬA HÀNG CÔNG NGHỆ</span>
-                <h1>{{ pageTitle }}</h1>
-                <p>{{ pageDescription }}</p>
-                <div class="catalog-category-pills mt-4">
-                    <Link href="/products" :class="['catalog-pill', { active: activeCategory === 'all' }]">Tất cả</Link>
-                    <Link v-for="category in categories" :key="category.slug" :href="`/products?category=${category.slug}`" :class="['catalog-pill', { active: activeCategory === category.slug }]">
-                        <i :class="['bi', category.icon]" /> {{ category.name }}
-                    </Link>
-                </div>
-            </div>
-            <div class="catalog-count"><strong>{{ filteredProducts.length }}</strong><span>sản phẩm</span></div>
-        </section>
-
-        <div class="row g-4">
-            <aside class="col-lg-3">
-                <div class="catalog-filter-card sticky-lg-top">
-                    <div class="catalog-filter-heading"><span>Bộ lọc sản phẩm</span><small>{{ filteredProducts.length }} kết quả</small></div>
-                    <div class="catalog-filter-label">Danh mục</div>
-                    <Link href="/products" :class="['category-filter', { active: activeCategory === 'all' }]">
-                        <i class="bi bi-grid-3x3-gap" /><span>Tất cả sản phẩm</span><b>{{ products.length }}</b>
-                    </Link>
-                    <Link v-for="category in categories" :key="category.slug" :href="`/products?category=${category.slug}`" :class="['category-filter', { active: activeCategory === category.slug }]">
-                        <i :class="['bi', category.icon]" /><span>{{ category.name }}</span><b>{{ category.count }}</b>
-                    </Link>
-                    <div class="catalog-filter-tip"><i class="bi bi-lightning-charge-fill" /><span>Mẹo: dùng ô tìm kiếm để tìm nhanh theo tên, hãng hoặc danh mục.</span></div>
-                </div>
-            </aside>
-
-            <section class="col-lg-9">
-                <div class="catalog-toolbar mb-3">
-                    <div class="search-box flex-grow-1"><i class="bi bi-search" /><input v-model="query" type="search" placeholder="Tìm laptop, RAM, SSD, phụ kiện..." /></div>
-                    <select v-model="sort" class="form-select catalog-sort">
-                        <option value="featured">Sắp xếp: Nổi bật</option>
-                        <option value="rating">Đánh giá cao</option>
-                        <option value="price-low">Giá thấp đến cao</option>
-                        <option value="price-high">Giá cao đến thấp</option>
-                    </select>
-                </div>
-
-                <div class="catalog-results-bar mb-3">
-                    <span>Hiển thị <strong>{{ firstItem }}–{{ lastItem }}</strong> trong <strong>{{ filteredProducts.length }}</strong> sản phẩm</span>
-                    <span>Trang <strong>{{ currentPage }}</strong> / <strong>{{ totalPages }}</strong></span>
-                </div>
-
-                <div v-if="paginatedProducts.length" class="row g-3 g-xl-4">
-                    <div v-for="product in paginatedProducts" :key="product.id" class="col-sm-6 col-xl-4">
-                        <article class="catalog-product-card">
-                            <div class="catalog-product-image">
-                                <img :src="product.image" :alt="product.name" loading="lazy" @error="($event.target as HTMLImageElement).style.visibility='hidden'" />
-                                <span v-if="product.badge" class="catalog-product-badge">{{ product.badge }}</span>
-                                <span class="catalog-stock">Còn {{ product.stock }}</span>
-                            </div>
-                            <div class="catalog-product-body">
-                                <div class="catalog-product-brand">{{ product.brand }}</div>
-                                <h2 class="catalog-product-title">{{ product.name }}</h2>
-                                <div class="catalog-product-meta"><span><i class="bi bi-star-fill" /> {{ product.rating }}</span><span>Đã bán {{ product.sold }}</span></div>
-                                <div><span class="catalog-product-price">{{ formatPrice(product.price) }}</span><span v-if="product.oldPrice" class="catalog-product-old">{{ formatPrice(product.oldPrice) }}</span></div>
-                                <div class="catalog-product-actions">
-                                    <Link :href="`/products/${product.slug}`" class="btn btn-outline-primary flex-grow-1">Xem chi tiết <i class="bi bi-arrow-right ms-1" /></Link>
-                                    <button type="button" class="btn btn-primary catalog-cart-btn" title="Thêm vào giỏ hàng" @click="addToCart(product)"><i class="bi bi-cart-plus" /></button>
-                                </div>
-                            </div>
-                        </article>
-                    </div>
-                </div>
-
-                <div v-else class="empty-catalog"><i class="bi bi-search" /><h3>Không tìm thấy sản phẩm</h3><p>Thử từ khóa khác hoặc chọn lại danh mục.</p><Link href="/products" class="btn btn-primary mt-3">Xem tất cả sản phẩm</Link></div>
-
-                <nav v-if="totalPages > 1" class="catalog-pagination" aria-label="Phân trang sản phẩm">
-                    <button type="button" class="catalog-page-btn arrow" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)"><i class="bi bi-chevron-left" /></button>
-                    <template v-for="(item, index) in paginationItems" :key="`${item}-${index}`">
-                        <span v-if="item === '...'" class="catalog-page-dots">…</span>
-                        <button v-else type="button" :class="['catalog-page-btn', { active: currentPage === item }]" @click="goToPage(item)">{{ item }}</button>
-                    </template>
-                    <button type="button" class="catalog-page-btn arrow" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)"><i class="bi bi-chevron-right" /></button>
-                </nav>
-            </section>
-        </div>
-    </div>
-</template>
-
+<Head :title="pageTitle"/><div class="catalog-page"><div class="shop-breadcrumb mb-3"><Link href="/">Trang chủ</Link><i class="bi bi-chevron-right"/><span>{{pageTitle}}</span></div>
+<section class="catalog-hero mb-4"><div><span class="section-kicker">TECHSTORE · CỬA HÀNG CÔNG NGHỆ</span><h1>{{pageTitle}}</h1><p>{{pageDescription}}</p><div class="catalog-category-pills mt-4"><Link href="/products" :class="['catalog-pill',{active:activeCategory==='all'}]">Tất cả</Link><Link v-for="category in props.categories" :key="category.id" :href="`/products?category=${category.slug}`" :class="['catalog-pill',{active:activeCategory===category.slug}]"><i :class="['bi',category.icon||'bi-box-seam']"/> {{category.name}}</Link></div></div><div class="catalog-count"><strong>{{filteredProducts.length}}</strong><span>sản phẩm</span></div></section>
+<div class="row g-4"><aside class="col-lg-3"><div class="catalog-filter-card sticky-lg-top"><div class="catalog-filter-heading"><span>Bộ lọc sản phẩm</span><small>{{filteredProducts.length}} kết quả</small></div><div class="catalog-filter-label">Danh mục</div><Link href="/products" :class="['category-filter',{active:activeCategory==='all'}]"><i class="bi bi-grid-3x3-gap"/><span>Tất cả sản phẩm</span><b>{{props.products.length}}</b></Link><Link v-for="category in props.categories" :key="category.id" :href="`/products?category=${category.slug}`" :class="['category-filter',{active:activeCategory===category.slug}]"><i :class="['bi',category.icon||'bi-box-seam']"/><span>{{category.name}}</span><b>{{category.count}}</b></Link><div class="catalog-filter-tip"><i class="bi bi-lightning-charge-fill"/><span>Mẹo: dùng ô tìm kiếm để tìm nhanh theo tên, hãng hoặc danh mục.</span></div></div></aside>
+<section class="col-lg-9"><div class="catalog-toolbar mb-3"><div class="search-box flex-grow-1"><i class="bi bi-search"/><input v-model="query" type="search" placeholder="Tìm laptop, RAM, SSD, phụ kiện..."/></div><select v-model="sort" class="form-select catalog-sort"><option value="featured">Sắp xếp: Nổi bật</option><option value="rating">Đánh giá cao</option><option value="price-low">Giá thấp đến cao</option><option value="price-high">Giá cao đến thấp</option></select></div><div class="catalog-results-bar mb-3"><span>Hiển thị <strong>{{firstItem}}–{{lastItem}}</strong> trong <strong>{{filteredProducts.length}}</strong> sản phẩm</span><span>Trang <strong>{{currentPage}}</strong> / <strong>{{totalPages}}</strong></span></div>
+<div v-if="paginatedProducts.length" class="row g-3 g-xl-4"><div v-for="product in paginatedProducts" :key="product.id" class="col-sm-6 col-xl-4"><article class="catalog-product-card"><div class="catalog-product-image"><img v-if="product.image" :src="product.image" :alt="product.name" loading="lazy"/><span v-if="product.badge" class="catalog-product-badge">{{product.badge}}</span><span :class="['catalog-stock',product.stock<1?'out':'']">{{product.stock<1?'Hết hàng':`Còn ${product.stock}`}}</span></div><div class="catalog-product-body"><div class="catalog-product-brand">{{product.brand}}</div><h2 class="catalog-product-title">{{product.name}}</h2><div class="catalog-product-meta"><span><i class="bi bi-star-fill"/> {{product.rating}}</span><span>Đã bán {{product.sold}}</span></div><div><span class="catalog-product-price">{{formatPrice(product.price)}}</span><span v-if="product.oldPrice" class="catalog-product-old">{{formatPrice(product.oldPrice)}}</span></div><div class="catalog-product-actions"><Link :href="`/products/${product.slug}`" class="btn btn-outline-primary flex-grow-1">Xem chi tiết <i class="bi bi-arrow-right ms-1"/></Link><button type="button" class="btn btn-primary catalog-cart-btn" :disabled="product.stock<1" title="Thêm vào giỏ hàng" @click="addToCart(product)"><i class="bi bi-cart-plus"/></button></div></div></article></div></div>
+<div v-else class="empty-catalog"><i class="bi bi-search"/><h3>Không tìm thấy sản phẩm</h3><p>Thử từ khóa khác hoặc chọn lại danh mục.</p><Link href="/products" class="btn btn-primary mt-3">Xem tất cả sản phẩm</Link></div>
+<nav v-if="totalPages>1" class="catalog-pagination"><button type="button" class="catalog-page-btn arrow" :disabled="currentPage===1" @click="goToPage(currentPage-1)"><i class="bi bi-chevron-left"/></button><template v-for="(item,index) in paginationItems" :key="`${item}-${index}`"><span v-if="item==='...'" class="catalog-page-dots">…</span><button v-else type="button" :class="['catalog-page-btn',{active:currentPage===item}]" @click="goToPage(item)">{{item}}</button></template><button type="button" class="catalog-page-btn arrow" :disabled="currentPage===totalPages" @click="goToPage(currentPage+1)"><i class="bi bi-chevron-right"/></button></nav></section></div></div></template>
 <style scoped>
-.catalog-category-pills{display:flex;flex-wrap:wrap;gap:7px}.catalog-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid #e1e7f0;border-radius:999px;color:#667085;background:#fff;font-size:.68rem;font-weight:800;transition:.18s ease}.catalog-pill:hover{border-color:#b9cdf3;color:#2563eb;background:#f8fbff}.catalog-pill.active{border-color:#b8cffd;color:#2563eb;background:#edf4ff}.catalog-filter-heading{display:flex;align-items:end;justify-content:space-between;padding:2px 6px 14px;border-bottom:1px solid #edf0f4}.catalog-filter-heading span{color:#101828;font-size:.9rem;font-weight:850}.catalog-filter-heading small{color:#98a2b3;font-size:.62rem;font-weight:700}.catalog-filter-label{margin:15px 6px 6px;color:#98a2b3;font-size:.62rem;font-weight:850;text-transform:uppercase;letter-spacing:.1em}.catalog-filter-tip{display:flex;gap:7px;margin:14px 2px 2px;padding:10px;border-radius:11px;color:#667085;background:#f8fafc;font-size:.62rem;line-height:1.45}.catalog-filter-tip i{flex:0 0 auto;color:#f59e0b}.catalog-results-bar{display:flex;justify-content:space-between;align-items:center;padding:0 2px;color:#98a2b3;font-size:.68rem}.catalog-results-bar strong{color:#344054;font-weight:850}.catalog-product-card{height:100%;overflow:hidden;border:1px solid #e5e9f0;border-radius:18px;background:#fff;box-shadow:0 7px 25px rgba(16,24,40,.045);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}.catalog-product-card:hover{transform:translateY(-4px);border-color:#cbd9f3;box-shadow:0 17px 38px rgba(16,24,40,.1)}.catalog-product-image{position:relative;aspect-ratio:1.05;display:grid;place-items:center;overflow:hidden;background:#f5f7fa}.catalog-product-image img{width:100%;height:100%;object-fit:cover;transition:transform .3s ease}.catalog-product-card:hover .catalog-product-image img{transform:scale(1.045)}.catalog-product-badge{position:absolute;top:10px;left:10px;padding:5px 8px;border-radius:7px;color:#fff;background:#101828;font-size:.62rem;font-weight:800}.catalog-stock{position:absolute;right:10px;bottom:10px;padding:5px 8px;border:1px solid rgba(255,255,255,.8);border-radius:8px;color:#166534;background:rgba(240,253,244,.95);font-size:.61rem;font-weight:800}.catalog-product-body{padding:14px}.catalog-product-brand{margin-bottom:5px;color:#98a2b3;font-size:.61rem;font-weight:850;letter-spacing:.12em}.catalog-product-title{height:44px;margin:0 0 7px;color:#172033;font-size:.9rem;font-weight:800;line-height:1.4}.catalog-product-meta{display:flex;justify-content:space-between;color:#98a2b3;font-size:.65rem}.catalog-product-meta i{color:#f59e0b}.catalog-product-price{margin-top:8px;color:#dc2626;font-size:1rem;font-weight:900}.catalog-product-old{margin-left:6px;color:#98a2b3;font-size:.67rem;text-decoration:line-through}.catalog-product-actions{display:flex;gap:7px;margin-top:12px}.catalog-product-actions .btn{height:37px;border-radius:9px;font-size:.7rem;font-weight:800}.catalog-cart-btn{width:40px;flex:0 0 40px!important;padding:0!important}.catalog-pagination{display:flex;justify-content:center;align-items:center;gap:6px;margin:28px 0 8px}.catalog-page-btn{min-width:36px;height:36px;padding:0 9px;border:1px solid #e1e7ef;border-radius:9px;background:#fff;color:#475467;font-size:.72rem;font-weight:800;transition:.18s ease}.catalog-page-btn:hover:not(:disabled){border-color:#b9cdf3;color:#2563eb;background:#f8fbff}.catalog-page-btn.active{border-color:#2563eb;color:#fff;background:#2563eb;box-shadow:0 5px 14px rgba(37,99,235,.18)}.catalog-page-btn.arrow{width:36px}.catalog-page-btn:disabled{cursor:not-allowed;opacity:.4}.catalog-page-dots{width:25px;text-align:center;color:#98a2b3;font-weight:800}@media(max-width:991.98px){.catalog-hero{padding:24px}.catalog-count{width:90px;height:90px;flex-basis:90px}.catalog-filter-card{position:static!important}.catalog-toolbar{flex-wrap:wrap}.catalog-toolbar .search-box{flex:1 1 100%}.catalog-sort{width:100%}}@media(max-width:767.98px){.catalog-page{padding:18px 12px 45px}.catalog-hero{align-items:flex-start;flex-direction:column;padding:20px}.catalog-count{width:82px;height:82px}.catalog-count strong{font-size:1.55rem}.catalog-product-title{height:auto;min-height:44px}.catalog-results-bar{gap:10px;flex-wrap:wrap}.catalog-pagination{gap:4px}.catalog-page-btn{min-width:34px;height:34px}}
+.catalog-page{padding:24px 20px 65px}.catalog-category-pills{display:flex;flex-wrap:wrap;gap:7px}.catalog-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid #e1e7f0;border-radius:999px;color:#667085;background:#fff;font-size:.68rem;font-weight:800;transition:.18s ease}.catalog-pill:hover,.catalog-pill.active{border-color:#b8cffd;color:#2563eb;background:#edf4ff}.catalog-filter-card{padding:16px;border:1px solid #e5e9f0;border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(16,24,40,.05);top:20px}.catalog-filter-heading{display:flex;justify-content:space-between;padding:2px 6px 14px;border-bottom:1px solid #edf0f4}.catalog-filter-heading span{font-size:.9rem;font-weight:850}.catalog-filter-heading small,.catalog-filter-label{color:#98a2b3;font-size:.62rem}.catalog-filter-label{margin:15px 6px 6px;font-weight:850;text-transform:uppercase;letter-spacing:.1em}.category-filter{display:flex;align-items:center;gap:8px;padding:10px 8px;border-radius:10px;color:#667085;font-size:.68rem;font-weight:750;text-decoration:none}.category-filter span{flex:1}.category-filter b{font-size:.6rem}.category-filter:hover,.category-filter.active{color:#2563eb;background:#eff6ff}.catalog-filter-tip{display:flex;gap:7px;margin-top:12px;padding:10px;border-radius:11px;color:#667085;background:#f8fafc;font-size:.62rem;line-height:1.45}.catalog-filter-tip i{color:#f59e0b}.catalog-results-bar{display:flex;justify-content:space-between;color:#98a2b3;font-size:.68rem}.catalog-results-bar strong{color:#344054}.catalog-toolbar{display:flex;gap:10px}.search-box{display:flex;align-items:center;gap:9px;padding:0 13px;border:1px solid #dfe5ee;border-radius:11px;background:#fff}.search-box i{color:#98a2b3}.search-box input{width:100%;height:42px;border:0;outline:0;background:transparent;font-size:.72rem}.catalog-sort{width:190px;border-radius:11px;font-size:.7rem}.catalog-product-card{height:100%;overflow:hidden;border:1px solid #e5e9f0;border-radius:18px;background:#fff;box-shadow:0 7px 25px rgba(16,24,40,.045);transition:.22s ease}.catalog-product-card:hover{transform:translateY(-4px);border-color:#cbd9f3;box-shadow:0 17px 38px rgba(16,24,40,.1)}.catalog-product-image{position:relative;aspect-ratio:1.05;display:grid;place-items:center;overflow:hidden;background:#f5f7fa}.catalog-product-image img{width:100%;height:100%;object-fit:cover;transition:.3s ease}.catalog-product-card:hover img{transform:scale(1.045)}.catalog-product-badge{position:absolute;top:10px;left:10px;padding:5px 8px;border-radius:7px;color:#fff;background:#101828;font-size:.62rem;font-weight:800}.catalog-stock{position:absolute;right:10px;bottom:10px;padding:5px 8px;border:1px solid rgba(255,255,255,.8);border-radius:8px;color:#166534;background:rgba(240,253,244,.95);font-size:.61rem;font-weight:800}.catalog-stock.out{color:#b42318;background:rgba(254,242,242,.96)}.catalog-product-body{padding:14px}.catalog-product-brand{margin-bottom:5px;color:#98a2b3;font-size:.61rem;font-weight:850;letter-spacing:.12em}.catalog-product-title{height:44px;margin:0 0 7px;color:#172033;font-size:.9rem;font-weight:800;line-height:1.4}.catalog-product-meta{display:flex;justify-content:space-between;color:#98a2b3;font-size:.65rem}.catalog-product-meta i{color:#f59e0b}.catalog-product-price{margin-top:8px;color:#dc2626;font-size:1rem;font-weight:900}.catalog-product-old{margin-left:6px;color:#98a2b3;font-size:.67rem;text-decoration:line-through}.catalog-product-actions{display:flex;gap:7px;margin-top:12px}.catalog-product-actions .btn{height:37px;border-radius:9px;font-size:.7rem;font-weight:800}.catalog-cart-btn{width:40px;flex:0 0 40px!important;padding:0!important}.catalog-pagination{display:flex;justify-content:center;align-items:center;gap:6px;margin:28px 0 8px}.catalog-page-btn{min-width:36px;height:36px;padding:0 9px;border:1px solid #e1e7ef;border-radius:9px;background:#fff;color:#475467;font-size:.72rem;font-weight:800}.catalog-page-btn:hover:not(:disabled),.catalog-page-btn.active{border-color:#2563eb;color:#fff;background:#2563eb}.catalog-page-btn:disabled{opacity:.4}.catalog-page-dots{width:25px;text-align:center;color:#98a2b3;font-weight:800}@media(max-width:991px){.catalog-page{padding:18px 12px 45px}.catalog-filter-card{position:static!important}.catalog-toolbar{flex-wrap:wrap}.search-box{flex:1 1 100%}.catalog-sort{width:100%}.catalog-results-bar{gap:10px;flex-wrap:wrap}}
 </style>

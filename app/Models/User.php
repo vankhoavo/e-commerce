@@ -23,7 +23,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $address_province
  * @property string|null $address_ward
  * @property string|null $address_detail
- * @property Carbon|null $birth_date
+ * @property string|null $birth_date
  * @property UserRole $role
  * @property bool $is_active
  * @property string|null $avatar
@@ -42,7 +42,6 @@ class User extends Authenticatable implements PasskeyUser
     {
         return [
             'email_verified_at' => 'datetime',
-            'birth_date' => 'date',
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',

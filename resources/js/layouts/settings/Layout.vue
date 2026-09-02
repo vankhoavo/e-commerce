@@ -97,8 +97,8 @@ onBeforeUnmount(() => {
         </nav>
 
         <main class="settings-page-content">
-            <div v-if="activeSection !== 'orders'" class="settings-slot-view"><slot /></div>
-            <div v-else class="settings-orders-view"><Orders /></div>
+            <div v-show="activeSection !== 'orders'" class="settings-slot-view"><slot /></div>
+            <div v-show="activeSection === 'orders'" class="settings-orders-view"><Orders /></div>
         </main>
     </div>
 </template>

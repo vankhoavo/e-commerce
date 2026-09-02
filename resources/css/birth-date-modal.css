@@ -1,18 +1,18 @@
-.birth-date-modal-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.55)}
-.birth-date-modal{width:min(600px,100%);background:#fff;border-radius:28px;padding:24px 20px 18px;box-shadow:0 24px 70px rgba(0,0,0,.28);font-family:inherit;color:#111827}
-.birth-date-modal-header{display:grid;grid-template-columns:42px 1fr 42px;align-items:start;gap:8px}
-.birth-date-modal-header h2{margin:0;padding:0 4px;font-size:25px;line-height:1.2;font-weight:700;text-align:left}
-.birth-date-back,.birth-date-close{border:0;background:transparent;width:42px;height:42px;border-radius:50%;font-size:34px;line-height:1;color:#111827;cursor:pointer;padding:0}
-.birth-date-back{font-size:38px;font-weight:300;margin-top:-5px}
-.birth-date-close{font-size:32px;font-weight:300;margin-top:-4px}
+.birth-date-modal-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(0,0,0,.55)}
+.birth-date-modal{width:min(480px,calc(100vw - 24px));background:#fff;border-radius:22px;padding:18px 18px 14px;box-shadow:0 20px 55px rgba(0,0,0,.25);font-family:inherit;color:#111827}
+.birth-date-modal-header{display:grid;grid-template-columns:32px 1fr 32px;align-items:center;gap:4px}
+.birth-date-modal-header h2{margin:0;padding:0 2px;font-size:21px;line-height:1.2;font-weight:700;text-align:left}
+.birth-date-back,.birth-date-close{border:0;background:transparent;width:32px;height:32px;border-radius:50%;font-size:28px;line-height:1;color:#111827;cursor:pointer;padding:0}
+.birth-date-back{font-size:32px;font-weight:300;margin-top:-3px}
+.birth-date-close{font-size:28px;font-weight:300;margin-top:-3px}
 .birth-date-back:hover,.birth-date-close:hover{background:#f3f4f6}
-.birth-date-description{margin:12px 0 28px;font-size:15px;line-height:1.45;color:#374151}
-.birth-date-selectors{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-.birth-date-select{position:relative;display:block;height:60px;border:1px solid #d1d5db;border-radius:16px;background:#fff;padding:9px 42px 7px 15px;cursor:pointer}
+.birth-date-description{margin:10px 0 20px;font-size:13px;line-height:1.4;color:#374151}
+.birth-date-selectors{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.birth-date-select{position:relative;display:block;height:54px;border:1px solid #d1d5db;border-radius:13px;background:#fff;padding:7px 34px 6px 12px;cursor:pointer}
 .birth-date-select:focus-within{border-color:#9ca3af}
-.birth-date-select span{display:block;font-size:12px;line-height:15px;color:#6b7280}
-.birth-date-select select{appearance:none;-webkit-appearance:none;width:100%;height:28px;border:0;outline:0;background:transparent;font:inherit;font-size:16px;font-weight:500;color:#111827;padding:0;cursor:pointer}
-.birth-date-select b{position:absolute;right:14px;top:25px;font-size:22px;line-height:12px;font-weight:400;color:#111827;pointer-events:none}
-.birth-date-save{width:100%;height:46px;margin-top:110px;border:0;border-radius:24px;background:#93bdf0;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.birth-date-select span{display:block;font-size:11px;line-height:14px;color:#6b7280}
+.birth-date-select select{appearance:none;-webkit-appearance:none;width:100%;height:25px;border:0;outline:0;background:transparent;font:inherit;font-size:15px;font-weight:600;color:#111827;padding:0;cursor:pointer}
+.birth-date-select b{position:absolute;right:10px;top:23px;font-size:19px;line-height:10px;font-weight:400;color:#111827;pointer-events:none}
+.birth-date-save{width:100%;height:42px;margin-top:44px;border:0;border-radius:21px;background:#93bdf0;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
 .birth-date-save:hover{background:#7eafea}
-@media(max-width:560px){.birth-date-modal{border-radius:24px;padding:22px 16px 16px}.birth-date-modal-header h2{font-size:22px}.birth-date-description{font-size:14px;margin-bottom:22px}.birth-date-selectors{gap:8px}.birth-date-select{padding-left:12px;padding-right:30px}.birth-date-select b{right:9px}.birth-date-save{margin-top:90px}}
+@media(max-width:560px){.birth-date-modal{border-radius:20px;padding:16px 14px 12px}.birth-date-modal-header h2{font-size:19px}.birth-date-description{font-size:12.5px;margin-bottom:17px}.birth-date-selectors{gap:7px}.birth-date-select{padding-left:10px;padding-right:28px}.birth-date-select b{right:8px}.birth-date-save{margin-top:36px}}

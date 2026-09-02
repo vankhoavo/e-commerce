@@ -3,10 +3,25 @@
 ## Mục tiêu
 
 - Đăng nhập/đăng ký bằng Laravel Fortify.
-- Email verification, quên mật khẩu và xác thực hai bước tiếp tục dùng Fortify.
+- Xác minh Email bằng OTP.
+- Quên mật khẩu bằng Email OTP.
+- Xác thực hai bước dùng Fortify.
 - Tài khoản có 3 vai trò: `admin`, `staff`, `customer`.
 - Tài khoản bị khóa (`is_active = false`) không được truy cập khu vực quản trị.
 - Hỗ trợ đăng nhập bằng Google OAuth 2.0 / OpenID Connect.
+
+## Khôi phục mật khẩu bằng Email OTP
+
+Luồng khôi phục mật khẩu của TechStore dùng mã OTP 6 chữ số gửi qua Email:
+
+1. Người dùng nhập Email đã đăng ký.
+2. Hệ thống tạo OTP mới và vô hiệu hóa OTP chưa dùng trước đó của tài khoản.
+3. OTP có hiệu lực trong 10 phút và được lưu dưới dạng mã băm.
+4. Người dùng nhập OTP để xác minh.
+5. Sau khi xác minh thành công, người dùng tạo mật khẩu mới theo chính sách mật khẩu chung.
+6. OTP đã xác minh được đánh dấu đã sử dụng và phiên khôi phục được xóa sau khi đổi mật khẩu.
+
+Hệ thống giới hạn số lần yêu cầu và số lần nhập OTP để giảm nguy cơ lạm dụng. Với Email không tồn tại, phản hồi không tiết lộ tài khoản có tồn tại hay không.
 
 ## Google OAuth
 
@@ -48,8 +63,8 @@ Kiểm tra các luồng:
 
 1. Đăng ký tài khoản mới → vai trò mặc định `customer`.
 2. Đăng nhập bằng email/mật khẩu.
-3. Quên mật khẩu.
-4. Xác minh email.
+3. Quên mật khẩu → nhận Email OTP → xác minh → đặt mật khẩu mới.
+4. Xác minh Email.
 5. Bật xác thực hai bước.
 6. Đăng nhập Google.
 7. Customer/staff truy cập `/admin` → `403`.

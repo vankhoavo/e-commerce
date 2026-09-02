@@ -13,7 +13,10 @@ class ProfileUpdateRequest extends FormRequest
     /** @return array<string, ValidationRule|array<mixed>|string> */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        $rules = $this->profileRules($this->user()->id);
+        unset($rules['email']);
+
+        return $rules;
     }
 
     /** @return array<string, string> */

@@ -10,6 +10,8 @@ use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
+    private const COD_SHIPPING_FEE = 30000;
+
     public function index(Request $request): JsonResponse
     {
         $orders = Order::query()
@@ -48,9 +50,15 @@ class OrderController extends Controller
         $calculatedSubtotal = collect($data['items'])->sum(fn (array $item): int => (int) $item['price'] * (int) $item['quantity']);
         $shipping = (int) $data['shipping'];
         $totalShipping = (int) $data['total_shipping'];
-        $calculatedTotal = $calculatedSubtotal + $totalShipping;
+        $expectedShipping = $data['payment'] === 'cod' ? self::COD_SHIPPING_FEE : 0;
+        $calculatedTotal = $calculatedSubtotal + $expectedShipping;
 
-        if ($calculatedSubtotal !== (int) $data['subtotal'] || $shipping !== $totalShipping || $calculatedTotal !== (int) $data['total']) {
+        if (
+            $calculatedSubtotal !== (int) $data['subtotal']
+            || $shipping !== $expectedShipping
+            || $totalShipping !== $expectedShipping
+            || $calculatedTotal !== (int) $data['total']
+        ) {
             return response()->json(['message' => 'Dữ liệu đơn hàng không hợp lệ.'], 422);
         }
 

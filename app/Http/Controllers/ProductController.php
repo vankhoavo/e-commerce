@@ -14,6 +14,7 @@ class ProductController extends Controller
         return Inertia::render('Products/Index', [
             'category' => $request->string('category')->toString(),
             'search' => $request->string('search')->toString(),
+            'page' => max(1, $request->integer('page', 1)),
         ]);
     }
 

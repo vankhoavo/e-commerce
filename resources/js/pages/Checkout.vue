@@ -33,7 +33,7 @@ const paypalSession = ref<any>(null);
 const paypalClientId = String(import.meta.env.VITE_PAYPAL_CLIENT_ID ?? '').trim();
 const form = ref({ name: '', phone: '', email: '', address: '', note: '', payment: 'cod' });
 
-const SHIPPING_FEE = 30000;
+const COD_SHIPPING_FEE = 30000;
 const VND_TO_USD = 25000;
 
 function loadCart() {
@@ -51,7 +51,7 @@ function loadCart() {
 
 const itemCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0));
 const subtotal = computed(() => cart.value.reduce((sum, item) => sum + item.price * item.quantity, 0));
-const shippingFee = computed(() => cart.value.length ? SHIPPING_FEE : 0);
+const shippingFee = computed(() => form.value.payment === 'cod' && cart.value.length ? COD_SHIPPING_FEE : 0);
 const totalShipping = computed(() => shippingFee.value);
 const total = computed(() => subtotal.value + totalShipping.value);
 const paypalUsd = computed(() => Math.max(1, Math.round((total.value / VND_TO_USD) * 100) / 100));
@@ -99,8 +99,8 @@ async function saveOrder(payment: string, paypalOrderId: string | null = null) {
     orderError.value = '';
     try {
         const order = await persistOrder(payment, paypalOrderId);
+        form.value.payment = payment;
         orderCode.value = order.code;
-        if (userId.value) localStorage.setItem(`techstore_last_order_user_${userId.value}`, JSON.stringify(order));
         clearUserCart();
         submitted.value = true;
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -267,13 +267,13 @@ onMounted(loadCart);
 
                             <div class="payment-block">
                                 <div class="payment-block-heading"><div><span>Phương thức thanh toán</span><small>Chọn một phương thức</small></div><i class="bi bi-shield-check"/></div>
-                                <button type="button" class="payment-option" :class="{ active: form.payment === 'cod' }" @click="selectPayment('cod')"><span class="payment-option-icon cod-icon"><i class="bi bi-cash-stack"/></span><span class="payment-option-copy"><strong>Thanh toán khi nhận hàng</strong><small>COD · Không phát sinh thêm phí.</small></span><span class="payment-radio" :class="{ checked: form.payment === 'cod' }"/></button>
-                                <button type="button" class="payment-option" :class="{ active: form.payment === 'paypal' }" @click="selectPayment('paypal')"><span class="payment-option-icon paypal-icon"><i class="bi bi-paypal"/></span><span class="payment-option-copy"><strong>PayPal Sandbox</strong><small>Môi trường thử nghiệm · Không chuyển tiền thật.</small></span><span class="payment-radio" :class="{ checked: form.payment === 'paypal' }"/></button>
+                                <button type="button" class="payment-option" :class="{ active: form.payment === 'cod' }" @click="selectPayment('cod')"><span class="payment-option-icon cod-icon"><i class="bi bi-cash-stack"/></span><span class="payment-option-copy"><strong>Thanh toán khi nhận hàng</strong><small>COD · Phí vận chuyển 30.000 ₫.</small></span><span class="payment-radio" :class="{ checked: form.payment === 'cod' }"/></button>
+                                <button type="button" class="payment-option" :class="{ active: form.payment === 'paypal' }" @click="selectPayment('paypal')"><span class="payment-option-icon paypal-icon"><i class="bi bi-paypal"/></span><span class="payment-option-copy"><strong>PayPal Sandbox</strong><small>Thanh toán trước · Miễn phí vận chuyển.</small></span><span class="payment-radio" :class="{ checked: form.payment === 'paypal' }"/></button>
 
                                 <div v-if="form.payment === 'paypal'" class="paypal-sandbox-panel">
                                     <div class="sandbox-badge"><i class="bi bi-shield-check"/> PAYPAL SANDBOX</div>
                                     <div class="sandbox-amount"><span>Số tiền thử nghiệm</span><strong>$ {{ paypalUsd.toFixed(2) }} USD</strong><small>Quy đổi thử nghiệm: 1 USD ≈ {{ VND_TO_USD.toLocaleString('vi-VN') }} VND</small></div>
-                                    <div class="sandbox-info"><i class="bi bi-info-circle"/><span>Sandbox là môi trường riêng của PayPal để mô phỏng giao dịch. Đăng nhập bằng <strong>tài khoản Sandbox Personal</strong>; không dùng tài khoản hay thẻ thật.</span></div>
+                                    <div class="sandbox-info"><i class="bi bi-info-circle"/><span>Thanh toán PayPal Sandbox được tính <strong>0 ₫ phí vận chuyển</strong>. Sandbox chỉ mô phỏng giao dịch, không chuyển tiền thật.</span></div>
                                     <div ref="paypalContainer" class="paypal-button-container"/>
                                     <div v-if="!paypalClientId" class="paypal-config-warning"><i class="bi bi-gear"/> Chưa cấu hình <code>VITE_PAYPAL_CLIENT_ID</code>.</div>
                                     <div v-if="paypalLoading" class="paypal-processing"><span class="spinner-border spinner-border-sm"/> Đang xác nhận thanh toán Sandbox...</div>
@@ -284,10 +284,10 @@ onMounted(loadCart);
 
                             <div class="order-divider"/><div class="order-total"><span>Tổng thanh toán</span><strong>{{ formatPrice(total) }}</strong></div>
                             <button v-if="form.payment === 'cod'" type="submit" class="place-order-btn">Tiến hành đặt hàng <i class="bi bi-check2-circle"/></button>
-                            <div v-else class="paypal-summary-hint"><i class="bi bi-shield-check"/> Thanh toán bằng tài khoản PayPal Sandbox Personal.</div>
+                            <div v-else class="paypal-summary-hint"><i class="bi bi-shield-check"/> Thanh toán trước qua PayPal Sandbox · Miễn phí vận chuyển.</div>
                             <Link href="/cart" class="back-cart"><i class="bi bi-arrow-left"/> Quay lại giỏ hàng</Link>
                         </div>
-                        <div class="checkout-safe"><i class="bi bi-shield-check"/><span><strong>PayPal Sandbox · An toàn để kiểm thử</strong><small>Giao dịch Sandbox là giao dịch mô phỏng, không chuyển tiền thật.</small></span></div>
+                        <div class="checkout-safe"><i class="bi bi-shield-check"/><span><strong>PayPal Sandbox · An toàn để kiểm thử</strong><small>Thanh toán trước bằng PayPal được miễn phí vận chuyển.</small></span></div>
                     </aside>
                 </form>
             </template>

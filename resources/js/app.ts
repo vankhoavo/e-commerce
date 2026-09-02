@@ -17,13 +17,10 @@ function setPageLoading(loading: boolean) {
     document.documentElement.classList.toggle('techstore-page-loading', loading);
 }
 
-// The initial document is hidden by the inline boot guard in app.blade.php.
-// Reveal it only after Vue/Inertia has mounted, so a hard refresh never flashes partial content.
-if (typeof window !== 'undefined') {
-    window.setTimeout(() => {
-        document.body.classList.remove('techstore-booting');
-        document.documentElement.classList.remove('techstore-booting');
-    }, 0);
+function revealApp() {
+    if (typeof document === 'undefined') return;
+    document.body.classList.remove('techstore-booting');
+    document.documentElement.classList.remove('techstore-booting');
 }
 
 router.on('start', () => setPageLoading(true));
@@ -46,4 +43,4 @@ void createInertiaApp({
         return ClientLayout;
     },
     progress: { color: '#2563eb' },
-});
+}).then(revealApp);

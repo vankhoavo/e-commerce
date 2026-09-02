@@ -113,9 +113,9 @@ function openModal(hidden: HTMLInputElement): void {
             </div>
             <p class="birth-date-description">Ngày sinh này sẽ được dùng cho các tài khoản và trang cá nhân trong Trung tâm tài khoản này. Bất kỳ chỉnh sửa nào mà bạn thay đổi đều sẽ áp dụng cho mọi trang cá nhân và tài khoản.</p>
             <div class="birth-date-selectors">
-                <label class="birth-date-select"><span>Ngày</span><select class="birth-day" aria-label="Ngày"></select><button type="button" class="birth-date-chevron" aria-label="Mở danh sách ngày">⌄</button></label>
-                <label class="birth-date-select"><span>Tháng</span><select class="birth-month" aria-label="Tháng"></select><button type="button" class="birth-date-chevron" aria-label="Mở danh sách tháng">⌄</button></label>
-                <label class="birth-date-select"><span>Năm</span><select class="birth-year" aria-label="Năm"></select><button type="button" class="birth-date-chevron" aria-label="Mở danh sách năm">⌄</button></label>
+                <label class="birth-date-select"><span>Ngày</span><select class="birth-day" aria-label="Ngày"></select><button type="button" class="birth-date-dropdown-button" aria-label="Mở danh sách ngày"><span aria-hidden="true"></span></button></label>
+                <label class="birth-date-select"><span>Tháng</span><select class="birth-month" aria-label="Tháng"></select><button type="button" class="birth-date-dropdown-button" aria-label="Mở danh sách tháng"><span aria-hidden="true"></span></button></label>
+                <label class="birth-date-select"><span>Năm</span><select class="birth-year" aria-label="Năm"></select><button type="button" class="birth-date-dropdown-button" aria-label="Mở danh sách năm"><span aria-hidden="true"></span></button></label>
             </div>
             <button type="button" class="birth-date-save">Lưu</button>
         </div>`;
@@ -143,7 +143,7 @@ function openModal(hidden: HTMLInputElement): void {
     refreshDays();
     year.addEventListener('change', refreshDays);
     month.addEventListener('change', refreshDays);
-    overlay.querySelectorAll<HTMLButtonElement>('.birth-date-chevron').forEach((button, index) => {
+    overlay.querySelectorAll<HTMLButtonElement>('.birth-date-dropdown-button').forEach((button, index) => {
         const selects = [day, month, year];
         button.addEventListener('click', (event) => {
             event.preventDefault();

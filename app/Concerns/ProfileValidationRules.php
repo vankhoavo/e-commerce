@@ -15,6 +15,7 @@ trait ProfileValidationRules
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
             'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\s().-]{8,20}$/'],
+            'address' => ['nullable', 'string', 'max:500'],
             'birth_date' => ['nullable', 'date', 'before:today'],
         ];
     }

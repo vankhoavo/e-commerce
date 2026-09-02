@@ -32,6 +32,9 @@ class EmailPasswordResetController
         ]);
         $email = Str::lower(trim($validated['email']));
 
+        // Starting a new recovery request must invalidate any previous reset session.
+        $this->clearSession($request);
+
         $key = 'password-reset:'.sha1($email.'|'.$request->ip());
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
@@ -71,6 +74,7 @@ class EmailPasswordResetController
             if ($code) {
                 $code->delete();
             }
+            $this->clearSession($request);
 
             return to_route('password.email.request');
         }
@@ -84,6 +88,7 @@ class EmailPasswordResetController
     {
         $code = $this->pendingCode($request);
         if (! $code) {
+            $this->clearSession($request);
             return to_route('password.email.request')->withErrors(['email' => 'Phiên khôi phục đã hết hạn.']);
         }
 
@@ -191,7 +196,10 @@ class EmailPasswordResetController
     private function pendingUser(Request $request): ?User
     {
         $userId = $request->session()->get('password_reset_user_id');
-        return $userId ? User::query()->whereKey($userId)->where('is_active', true)->first() : null;
+
+        return $userId
+            ? User::query()->whereKey($userId)->where('is_active', true)->first()
+            : null;
     }
 
     private function clearSession(Request $request): void
@@ -211,6 +219,7 @@ class EmailPasswordResetController
         }
 
         $visible = substr($local, 0, min(2, strlen($local)));
+
         return $visible.str_repeat('*', max(2, strlen($local) - strlen($visible))).'@'.$domain;
     }
 }

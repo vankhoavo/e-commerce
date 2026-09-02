@@ -17,8 +17,15 @@ class LoginResponse implements LoginResponseContract
             return new JsonResponse(['two_factor' => false], 200);
         }
 
-        if ($request->user() && ! $request->user()->email_verified_at) {
-            $this->otp->send($request->user(), $request->user()->email);
+        $user = $request->user();
+
+        // Tài khoản quản trị dùng username "admin" và không phụ thuộc xác minh email.
+        if ($user?->isAdmin()) {
+            return redirect()->to('/admin');
+        }
+
+        if ($user && ! $user->email_verified_at) {
+            $this->otp->send($user, $user->email);
             return redirect()->route('email-verify-otp.show');
         }
 

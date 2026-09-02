@@ -22,19 +22,16 @@ class GoogleAuthController
         $state = Str::random(64);
         $request->session()->put('google_oauth_state', $state);
 
+        // Chỉ dùng OpenID Connect cơ bản cho đăng nhập.
+        // Không yêu cầu People API nên không cần các scope nhạy cảm
+        // user.phonenumbers.read / user.birthday.read.
         $query = http_build_query([
             'client_id' => $clientId,
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
-            'scope' => implode(' ', [
-                'openid',
-                'email',
-                'profile',
-                'https://www.googleapis.com/auth/user.phonenumbers.read',
-                'https://www.googleapis.com/auth/user.birthday.read',
-            ]),
+            'scope' => 'openid email profile',
             'access_type' => 'online',
-            'prompt' => 'consent select_account',
+            'prompt' => 'select_account',
             'state' => $state,
         ]);
 
@@ -86,36 +83,6 @@ class GoogleAuthController
         $email = Str::lower((string) data_get($googleUser, 'email'));
         abort_unless($googleId && $email && (bool) data_get($googleUser, 'email_verified', false), 422, 'Tài khoản Google không cung cấp email đã xác minh.');
 
-        // Phone number and birthday are not part of Google OpenID UserInfo.
-        // They must be requested from Google People API with the matching scopes.
-        $peopleResponse = Http::withToken($accessToken)
-            ->get('https://people.googleapis.com/v1/people/me', [
-                'personFields' => 'phoneNumbers,birthdays',
-            ]);
-
-        $people = $peopleResponse->successful() ? $peopleResponse->json() : [];
-
-        $phone = null;
-        foreach ((array) data_get($people, 'phoneNumbers', []) as $phoneEntry) {
-            $candidate = data_get($phoneEntry, 'canonicalForm') ?: data_get($phoneEntry, 'value');
-            if ($candidate) {
-                $phone = trim((string) $candidate);
-                break;
-            }
-        }
-
-        $birthDate = null;
-        foreach ((array) data_get($people, 'birthdays', []) as $birthdayEntry) {
-            $date = data_get($birthdayEntry, 'date');
-            $year = (int) data_get($date, 'year', 0);
-            $month = (int) data_get($date, 'month', 0);
-            $day = (int) data_get($date, 'day', 0);
-            if ($year > 0 && $month > 0 && $day > 0) {
-                $birthDate = sprintf('%04d-%02d-%02d', $year, $month, $day);
-                break;
-            }
-        }
-
         $user = User::query()->where('google_id', $googleId)->first() ?: User::query()->where('email', $email)->first();
 
         if (! $user) {
@@ -127,8 +94,6 @@ class GoogleAuthController
                 'is_active' => true,
                 'avatar' => data_get($googleUser, 'picture'),
                 'google_id' => $googleId,
-                'phone' => $phone,
-                'birth_date' => $birthDate,
             ]);
             $user->forceFill(['email_verified_at' => now()])->save();
         } else {
@@ -137,8 +102,6 @@ class GoogleAuthController
                 'google_id' => $googleId,
                 'avatar' => data_get($googleUser, 'picture') ?: $user->avatar,
                 'email_verified_at' => $user->email_verified_at ?: now(),
-                'phone' => $phone ?: $user->phone,
-                'birth_date' => $birthDate ?: $user->birth_date,
             ])->save();
         }
 

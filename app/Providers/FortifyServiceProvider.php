@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
+use App\Enums\UserRole;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\PasskeyLoginResponse;
 use App\Http\Responses\TechStoreRegisterResponse;
@@ -53,10 +54,7 @@ class FortifyServiceProvider extends ServiceProvider
                 ->when(strcasecmp($identifier, 'admin') !== 0, fn ($query) => $query->whereRaw('LOWER(email) = ?', [Str::lower($identifier)]))
                 ->first();
 
-            if (! $user || ! $user->is_active) {
-                return null;
-            }
-
+            if (! $user || ! $user->is_active) return null;
             return Hash::check($password, $user->password) ? $user : null;
         });
     }

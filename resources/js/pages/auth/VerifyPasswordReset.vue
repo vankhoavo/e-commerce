@@ -89,8 +89,8 @@ defineProps<{ email?: string; status?: string }>();
 .forgot-hero strong{color:#1d4ed8}
 .forgot-form{display:grid;gap:15px;margin-top:20px}
 .forgot-form label{display:block;margin-bottom:7px;color:#344054;font-size:11px;font-weight:800}
-.forgot-input{display:flex;align-items:center;height:45px;padding:0 12px;border:1px solid #dfe4ec;border-radius:10px;background:#fff;transition:.18s}
-.forgot-input:focus-within{border-color:#8fb2f4;box-shadow:0 0 0 4px rgba(37,99,235,.08)}
+.forgot-input{display:flex;align-items:center;height:45px;padding:0 12px;border:1px solid #dfe4ec;border-radius:10px;background:#fff;transition:border-color .18s}
+.forgot-input:focus-within{border-color:#8fb2f4;box-shadow:none}
 .forgot-input i{margin-right:9px;color:#98a2b3}
 .forgot-input input{width:100%;border:0;outline:0;color:#344054;background:transparent;font-size:11px;letter-spacing:.18em}
 .forgot-submit{display:flex;align-items:center;justify-content:center;gap:7px;height:43px;border:0;border-radius:10px;color:#fff;background:linear-gradient(135deg,#2563eb,#4f46e5);box-shadow:0 8px 18px rgba(37,99,235,.18);font-size:11px;font-weight:850}

@@ -14,16 +14,28 @@ trait ProfileValidationRules
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
-            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9\s().-]{8,20}$/'],
-            'address' => ['nullable', 'string', 'max:500'],
+            'phone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9\s().-]{8,30}$/'],
             'birth_date' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'address_province' => ['nullable', 'string', 'max:120'],
+            'address_ward' => ['nullable', 'string', 'max:160'],
+            'address_detail' => ['nullable', 'string', 'max:250'],
         ];
     }
 
-    protected function nameRules(): array { return ['required', 'string', 'max:255']; }
+    protected function nameRules(): array
+    {
+        return ['required', 'string', 'max:255'];
+    }
 
     protected function emailRules(?int $userId = null): array
     {
-        return ['required', 'string', 'email', 'max:255', $userId === null ? Rule::unique(User::class) : Rule::unique(User::class)->ignore($userId)];
+        return [
+            'required',
+            'string',
+            'email',
+            'max:255',
+            $userId === null ? Rule::unique(User::class) : Rule::unique(User::class)->ignore($userId),
+        ];
     }
 }

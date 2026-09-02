@@ -72,7 +72,6 @@ function loadCart(): void {
     form.value.phone = authUser.value?.phone ?? '';
     form.value.email = authUser.value?.email ?? '';
     form.value.address = authUser.value?.address ?? '';
-    form.value.vatInvoice.email = authUser.value?.email ?? '';
 }
 
 const itemCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0));

@@ -3,6 +3,12 @@ import { Head } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import Heading from '@/components/Heading.vue';
 import { edit } from '@/routes/appearance';
+import { inject, type Ref } from 'vue';
+
+type SettingsSection = 'profile' | 'security' | 'appearance' | 'orders';
+
+const activeSection = inject<Ref<SettingsSection>>('techstore-settings-section');
+if (activeSection) activeSection.value = 'appearance';
 
 defineOptions({
     layout: {

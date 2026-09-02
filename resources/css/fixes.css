@@ -43,3 +43,4 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 /* OTP inputs use a single visible border; avoid a second focus ring. */
 .forgot-input:focus-within{box-shadow:none!important}
+.forgot-input input:focus,.forgot-input input:focus-visible{border:0!important;outline:0!important;box-shadow:none!important}

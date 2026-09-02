@@ -34,3 +34,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 /* Logout action in the profile header. */
 .settings-logout{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;min-height:36px!important;padding:7px 12px!important;border:1px solid #dfe3ea!important;border-radius:10px!important;color:#475467!important;background:#fff!important;font-size:.66rem!important;font-weight:800!important;box-shadow:0 2px 8px rgba(16,24,40,.04)!important;cursor:pointer!important;transition:.18s ease!important}.settings-logout:hover{color:#b42318!important;border-color:#f3b5b0!important;background:#fff8f7!important;box-shadow:0 5px 14px rgba(180,35,24,.08)!important;transform:translateY(-1px)}.settings-logout:focus,.settings-logout:focus-visible{outline:0!important;border-color:#f3b5b0!important;box-shadow:0 0 0 3px rgba(180,35,24,.10)!important}
+
+/* Show the stored Google avatar when available; keep the TechStore logo as fallback. */
+.settings-profile-block .account-avatar:has(img) img{display:block!important;position:relative;z-index:2;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.settings-profile-block .account-avatar:has(img)::after{display:none!important}
+.settings-profile-block .account-avatar:not(:has(img))::after{display:block!important}
+.settings-profile-block .account-avatar img[src=""]{display:none!important}
+
+/* OTP inputs use a single visible border; avoid a second focus ring. */
+.forgot-input:focus-within{box-shadow:none!important}

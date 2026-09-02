@@ -1,3 +1,5 @@
+import { additionalProducts } from './additional-products';
+
 export type Product = {
     id: number;
     slug: string;
@@ -125,6 +127,8 @@ export const products: Product[] = [
     ...componentSeeds.map((item) => buildProduct(item, 'Linh kiện laptop', 'laptop-components')),
     ...accessorySeeds.map((item) => buildProduct(item, 'Phụ kiện laptop', 'laptop-accessories')),
 ];
+
+products.push(...additionalProducts);
 
 export const categories = [
     { name: 'Laptop', slug: 'laptop', icon: 'bi-laptop', count: products.filter((p) => p.categorySlug === 'laptop').length, tone: 'primary' },

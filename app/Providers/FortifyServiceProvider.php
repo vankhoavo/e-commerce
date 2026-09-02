@@ -9,7 +9,6 @@ use App\Http\Responses\PasskeyLoginResponse;
 use App\Http\Responses\TechStoreRegisterResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Http\Responses\VerifyEmailResponse;
-use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -64,11 +63,25 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', ['canResetPassword' => Features::enabled(Features::resetPasswords()), 'status' => $request->session()->get('status'), 'teamInvitation' => $this->teamInvitation($request)]));
-        Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/ResetPassword', ['email' => $request->email, 'token' => $request->route('token')]));
-        Fortify::requestPasswordResetLinkView(fn (Request $request) => Inertia::render('auth/ForgotPassword', ['status' => $request->session()->get('status')]));
-        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/VerifyEmail', ['status' => $request->session()->get('status')]));
-        Fortify::registerView(fn (Request $request) => Inertia::render('auth/Register', ['teamInvitation' => $this->teamInvitation($request)]));
+        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', [
+            'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            'status' => $request->session()->get('status'),
+        ]));
+
+        Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/ResetPassword', [
+            'email' => $request->email,
+            'token' => $request->route('token'),
+        ]));
+
+        Fortify::requestPasswordResetLinkView(fn (Request $request) => Inertia::render('auth/ForgotPassword', [
+            'status' => $request->session()->get('status'),
+        ]));
+
+        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/VerifyEmail', [
+            'status' => $request->session()->get('status'),
+        ]));
+
+        Fortify::registerView(fn () => Inertia::render('auth/Register'));
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
         Fortify::confirmPasswordView(fn () => Inertia::render('auth/ConfirmPassword'));
     }
@@ -78,14 +91,5 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')));
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip())));
         RateLimiter::for('passkeys', fn (Request $request) => Limit::perMinute(10)->by(($request->input('credential.id') ?: $request->session()->getId()).'|'.$request->ip()));
-    }
-
-    private function teamInvitation(Request $request): ?array
-    {
-        $code = $request->query('invitation');
-        if (! is_string($code)) return null;
-        $invitation = TeamInvitation::query()->with('team')->where('code', $code)->whereNull('accepted_at')->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>=', now()))->first();
-        if (! $invitation) return null;
-        return ['code' => $invitation->code, 'teamName' => $invitation->team->name];
     }
 }

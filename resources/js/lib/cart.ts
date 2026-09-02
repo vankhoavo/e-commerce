@@ -1,5 +1,3 @@
-import { syncAllLastOrdersToHistory } from '@/lib/orders';
-
 export type CartItem = {
     id: number;
     name: string;
@@ -74,8 +72,4 @@ export function migrateLegacyCart(userId: number | string | null | undefined): v
     } catch {
         localStorage.removeItem(LEGACY_CART_KEY);
     }
-}
-
-if (typeof window !== 'undefined') {
-    window.addEventListener('techstore-cart-updated', syncAllLastOrdersToHistory);
 }

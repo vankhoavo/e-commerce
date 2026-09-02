@@ -36,10 +36,28 @@ function initBirthDatePickerSoon(): void {
     window.setTimeout(() => initFlexibleBirthDatePicker(), 1500);
 }
 
+function disableCheckoutInputSuggestions(): void {
+    if (typeof document === 'undefined') return;
+
+    document.querySelectorAll<HTMLFormElement>('.checkout-page form').forEach((form) => {
+        form.setAttribute('autocomplete', 'off');
+    });
+
+    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('.checkout-page input:not([type="checkbox"]), .checkout-page textarea').forEach((field) => {
+        field.setAttribute('autocomplete', 'off');
+        field.setAttribute('spellcheck', 'false');
+    });
+
+    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('.checkout-page .vat-fields input, .checkout-page .vat-fields textarea').forEach((field) => {
+        field.removeAttribute('placeholder');
+    });
+}
+
 router.on('start', () => setPageLoading(true));
 router.on('finish', () => {
     setPageLoading(false);
     initBirthDatePickerSoon();
+    disableCheckoutInputSuggestions();
 });
 router.on('error', () => setPageLoading(false));
 router.on('invalid', () => setPageLoading(false));
@@ -47,7 +65,10 @@ router.on('invalid', () => setPageLoading(false));
 if (typeof window !== 'undefined') {
     void import('bootstrap');
     initAvatarFallback();
-    window.addEventListener('load', initBirthDatePickerSoon, { once: false });
+    window.addEventListener('load', () => {
+        initBirthDatePickerSoon();
+        disableCheckoutInputSuggestions();
+    }, { once: false });
 }
 
 void createInertiaApp({
@@ -62,4 +83,5 @@ void createInertiaApp({
 }).then(() => {
     revealApp();
     initBirthDatePickerSoon();
+    disableCheckoutInputSuggestions();
 });

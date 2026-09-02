@@ -18,7 +18,9 @@ class TechStoreRegisterResponse implements RegisterResponseContract
         }
 
         $user = $request->user();
-        if ($user && ! $user->email_verified_at) {
+        $usedGoogleLinkedEmail = (bool) ($user?->google_id);
+
+        if ($user && ! $user->email_verified_at && ! $usedGoogleLinkedEmail) {
             $this->otp->send($user, $user->email);
         }
 
@@ -26,6 +28,9 @@ class TechStoreRegisterResponse implements RegisterResponseContract
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('status', 'registration-success');
+        return redirect()->route('login')->with(
+            'status',
+            $usedGoogleLinkedEmail ? 'google-password-created' : 'registration-success',
+        );
     }
 }

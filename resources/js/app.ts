@@ -4,6 +4,7 @@ import '../css/app.css';
 import '../css/theme.css';
 import '../css/fixes.css';
 import '../css/birth-date-modal.css';
+import '../css/checkout-vat.css';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';

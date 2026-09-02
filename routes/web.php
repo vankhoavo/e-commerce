@@ -12,13 +12,13 @@ use Inertia\Inertia;
 
 Route::get('/', [ProductController::class, 'home'])->name('home');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/products/catalog', [ProductController::class, 'catalog'])->name('products.catalog');
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/cart', fn () => Inertia::render('Cart'))->name('cart.index');
 Route::get('/checkout', fn () => Inertia::render('Checkout'))->middleware('auth')->name('checkout.index');
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->middleware('guest')->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('guest')->name('google.callback');
 Route::get('/auth/google/check-email', [GoogleAuthController::class, 'checkEmail'])->middleware('guest')->name('google.check-email');
-
 Route::middleware('guest')->group(function (): void {
     Route::get('/forgot-password', [EmailPasswordResetController::class, 'showRequest'])->name('password.email.request');
     Route::post('/forgot-password', [EmailPasswordResetController::class, 'requestCode'])->middleware('throttle:3,5')->name('password.email.send');
@@ -28,7 +28,6 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/forgot-password/reset', [EmailPasswordResetController::class, 'showReset'])->name('password.email.reset');
     Route::post('/forgot-password/reset', [EmailPasswordResetController::class, 'resetPassword'])->middleware('throttle:6,1')->name('password.email.reset.submit');
 });
-
 Route::middleware('auth')->group(function (): void {
     Route::get('/verify-email-otp', [EmailVerificationOtpController::class, 'show'])->name('email-verify-otp.show');
     Route::post('/verify-email-otp', [EmailVerificationOtpController::class, 'verify'])->middleware('throttle:6,1')->name('email-verify-otp.verify');
@@ -40,7 +39,6 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::patch('/orders/{order}/return', [OrderController::class, 'returnOrder'])->name('orders.return');
 });
-
 Route::get('/dashboard', [DashboardController::class, '__invoke'])->middleware(['auth', 'verified'])->name('dashboard');
 require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';

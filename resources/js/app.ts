@@ -28,8 +28,6 @@ router.on('finish', () => setPageLoading(false));
 router.on('error', () => setPageLoading(false));
 router.on('invalid', () => setPageLoading(false));
 
-// Bootstrap's JavaScript touches `document` during module evaluation.
-// Load it only in the browser so Inertia SSR can evaluate the app safely.
 if (typeof window !== 'undefined') {
     void import('bootstrap');
 }
@@ -39,7 +37,7 @@ void createInertiaApp({
     layout: (name) => {
         if (name.startsWith('admin/')) return AdminLayout;
         if (name.startsWith('auth/')) return AuthLayout;
-        if (name.startsWith('settings/') || name.startsWith('teams/')) return [ClientLayout, SettingsLayout];
+        if (name.startsWith('settings/')) return [ClientLayout, SettingsLayout];
         return ClientLayout;
     },
     progress: { color: '#2563eb' },

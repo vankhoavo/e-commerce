@@ -53,11 +53,10 @@ selectSection(activeSection.value);
         </nav>
 
         <main class="settings-page-content">
-            <!-- Keep both view trees mounted. This avoids the Inertia layout slot being destroyed when switching to Orders. -->
-            <div class="settings-slot-view" :class="{ 'is-hidden': activeSection === 'orders' }">
+            <div class="settings-slot-view" :class="{ 'is-hidden': activeSection === 'orders' }" :aria-hidden="activeSection === 'orders'">
                 <slot />
             </div>
-            <div class="settings-orders-view" :class="{ 'is-hidden': activeSection !== 'orders' }" aria-hidden="activeSection !== 'orders'">
+            <div class="settings-orders-view" :class="{ 'is-hidden': activeSection !== 'orders' }" :aria-hidden="activeSection !== 'orders'">
                 <Orders />
             </div>
         </main>

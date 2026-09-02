@@ -5,7 +5,6 @@ namespace Tests\Feature\Settings;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -13,30 +12,12 @@ class SecurityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_security_page_is_displayed()
+    public function test_security_page_redirects_to_consolidated_settings()
     {
-        $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-        Features::twoFactorAuthentication([
-            'confirm' => true,
-            'confirmPassword' => true,
-        ]);
-        Features::passkeys([
-            'confirmPassword' => true,
-        ]);
-
-        $user = User::factory()->create();
-
-        $this->actingAs($user)
+        $this->actingAs(User::factory()->create())
             ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'))
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('settings/Security')
-                ->where('canManagePasskeys', true)
-                ->where('passkeys', [])
-                ->where('canManageTwoFactor', true)
-                ->where('twoFactorEnabled', false),
-            );
+            ->assertRedirect(route('profile.edit', ['section' => 'security']));
     }
 
     public function test_security_page_requires_password_confirmation_when_enabled()
@@ -56,10 +37,8 @@ class SecurityTest extends TestCase
         $response->assertRedirect(route('password.confirm'));
     }
 
-    public function test_security_page_renders_without_two_factor_when_feature_is_disabled()
+    public function test_security_route_stays_on_consolidated_settings_when_features_are_disabled()
     {
-        $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
         config(['fortify.features' => []]);
 
         $user = User::factory()->create();
@@ -67,15 +46,7 @@ class SecurityTest extends TestCase
         $this->actingAs($user)
             ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('settings/Security')
-                ->where('canManagePasskeys', false)
-                ->where('passkeys', [])
-                ->where('canManageTwoFactor', false)
-                ->missing('twoFactorEnabled')
-                ->missing('requiresConfirmation'),
-            );
+            ->assertRedirect(route('profile.edit', ['section' => 'security']));
     }
 
     public function test_password_can_be_updated()

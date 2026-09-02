@@ -34,7 +34,6 @@ class ProfileController
                 'created_at_diff' => $passkey->created_at->diffForHumans(),
                 'last_used_at_diff' => $passkey->last_used_at?->diffForHumans(),
             ])->values()->all() : [],
-            'teams' => $user->toUserTeams(includeCurrent: true),
         ]);
     }
 
@@ -42,6 +41,13 @@ class ProfileController
     {
         $data = $request->validated();
         unset($data['email']);
+
+        $province = trim((string) ($data['address_province'] ?? ''));
+        $ward = trim((string) ($data['address_ward'] ?? ''));
+        $detail = trim((string) ($data['address_detail'] ?? ''));
+        $parts = array_values(array_filter([$detail, $ward, $province], static fn (string $value): bool => $value !== ''));
+        $data['address'] = $parts ? implode(', ', $parts) : null;
+
         $request->user()->fill($data)->save();
 
         return to_route('profile.edit')->with('status', 'profile-updated');
@@ -54,6 +60,7 @@ class ProfileController
         $user->delete();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect('/');
     }
 }

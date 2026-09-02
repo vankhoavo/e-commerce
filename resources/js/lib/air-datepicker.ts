@@ -22,6 +22,16 @@ function displayDate(date: Date): string {
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 }
 
+function todayAtMidnight(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function parseDate(value: string): Date {
+    const parsed = new Date(`${value}T12:00:00`);
+    return Number.isNaN(parsed.getTime()) ? todayAtMidnight() : parsed;
+}
+
 function initBirthDatepicker(root: ParentNode = document): void {
     root.querySelectorAll<HTMLElement>('.date-picker').forEach((wrapper) => {
         if (wrapper.dataset.airDatepickerReady === 'true') return;
@@ -30,38 +40,49 @@ function initBirthDatepicker(root: ParentNode = document): void {
         const trigger = wrapper.querySelector<HTMLButtonElement>('.date-trigger');
         if (!hidden || !trigger) return;
 
-        const value = hidden.value || isoDate(new Date());
+        const today = todayAtMidnight();
+        const value = hidden.value && !Number.isNaN(parseDate(hidden.value).getTime()) ? hidden.value : isoDate(today);
         hidden.value = value;
 
         const input = document.createElement('input');
         input.type = 'text';
         input.readOnly = true;
         input.className = 'date-trigger-air';
-        input.value = value ? displayDate(new Date(`${value}T12:00:00`)) : '';
+        input.value = displayDate(parseDate(value));
         input.setAttribute('aria-label', 'Ngày sinh');
+        input.setAttribute('autocomplete', 'off');
         trigger.hidden = true;
         trigger.insertAdjacentElement('afterend', input);
 
         const datepicker = new AirDatepicker(input, {
             locale,
             dateFormat: 'dd/MM/yyyy',
-            selectedDates: value ? [new Date(`${value}T12:00:00`)] : [new Date()],
+            selectedDates: [parseDate(value)],
             minDate: new Date(1900, 0, 1),
-            maxDate: new Date(),
+            maxDate: today,
             autoClose: true,
+            isMobile: false,
             buttons: ['today', 'clear'],
             onSelect: ({ date }) => {
                 const selected = Array.isArray(date) ? date[0] : date;
                 if (!selected) {
                     hidden.value = '';
                     input.value = '';
-                    return;
+                } else {
+                    hidden.value = isoDate(selected);
+                    input.value = displayDate(selected);
                 }
-                hidden.value = isoDate(selected);
-                input.value = displayDate(selected);
                 hidden.dispatchEvent(new Event('input', { bubbles: true }));
                 hidden.dispatchEvent(new Event('change', { bubbles: true }));
             },
+        });
+
+        input.addEventListener('click', () => datepicker.show());
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                datepicker.show();
+            }
         });
 
         wrapper.dataset.airDatepickerReady = 'true';
@@ -72,15 +93,17 @@ function initBirthDatepicker(root: ParentNode = document): void {
 export function initAirDatepicker(): void {
     if (typeof document === 'undefined') return;
 
-    initBirthDatepicker();
+    const run = () => initBirthDatepicker(document);
+    run();
+    requestAnimationFrame(run);
+    window.setTimeout(run, 100);
+    window.setTimeout(run, 500);
+
+    if (document.body.dataset.techstoreAirDatepickerObserver === 'true') return;
+    document.body.dataset.techstoreAirDatepickerObserver = 'true';
 
     const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-            if (mutation.addedNodes.length) {
-                initBirthDatepicker();
-                break;
-            }
-        }
+        if (mutations.some((mutation) => mutation.addedNodes.length > 0)) run();
     });
 
     observer.observe(document.body, { childList: true, subtree: true });

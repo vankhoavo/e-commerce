@@ -42,8 +42,5 @@ Route::middleware('auth')->group(function (): void {
 });
 
 Route::get('/dashboard', [DashboardController::class, '__invoke'])->middleware(['auth', 'verified'])->name('dashboard');
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
-    Route::inertia('/', 'admin/Dashboard')->name('dashboard');
-});
-
+require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';

@@ -5,53 +5,25 @@ import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 
 const emit = defineEmits<{ success: [] }>();
-
 const getDefaultPasskeyName = () => {
     const ua = navigator.userAgent;
     const browser = [{ pattern: /Edg|Edge/, name: 'Edge' }, { pattern: /OPR|Opera|OPiOS/, name: 'Opera' }, { pattern: /Firefox|FxiOS/, name: 'Firefox' }, { pattern: /Chrome|CriOS/, name: 'Chrome' }, { pattern: /Safari/, name: 'Safari' }].find(({ pattern }) => pattern.test(ua))?.name;
     const os = [{ pattern: /iPhone/, name: 'iPhone' }, { pattern: /iPad|Macintosh(?=.*Mobile)/, name: 'iPad' }, { pattern: /Android/, name: 'Android' }, { pattern: /Mac/, name: 'Mac' }, { pattern: /Windows/, name: 'Windows' }].find(({ pattern }) => pattern.test(ua))?.name;
     return [browser, os].filter(Boolean).join(' trên ') || '';
 };
-
 const name = ref(getDefaultPasskeyName());
 const showForm = ref(false);
-const { register, isLoading, error, isSupported } = usePasskeyRegister({
-    onSuccess: () => { name.value = ''; showForm.value = false; emit('success'); },
-});
-
-const handleSubmit = async (event: Event) => {
-    event.preventDefault();
-    if (name.value.trim()) await register(name.value.trim());
-};
+const { register, isLoading, error, isSupported } = usePasskeyRegister({ onSuccess: () => { name.value = ''; showForm.value = false; emit('success'); } });
+const handleSubmit = async (event: Event) => { event.preventDefault(); if (name.value.trim()) await register(name.value.trim()); };
 const handleCancel = () => { showForm.value = false; name.value = getDefaultPasskeyName(); };
 </script>
 
 <template>
     <div v-if="!isSupported" class="passkey-unsupported"><i class="bi bi-exclamation-circle" /> Trình duyệt này chưa hỗ trợ Passkey.</div>
-    <>
-        <button v-if="isSupported && !showForm" type="button" class="passkey-add-btn" @click="showForm = true"><KeyRound :size="15" /> Thêm Passkey</button>
-        <Teleport to="body">
-            <Transition name="passkey-modal">
-                <div v-if="showForm" class="passkey-modal-backdrop" @click.self="handleCancel">
-                    <section class="passkey-modal" role="dialog" aria-modal="true" aria-labelledby="passkey-title">
-                        <button type="button" class="passkey-close" aria-label="Đóng" @click="handleCancel"><X :size="17" /></button>
-                        <div class="passkey-modal-icon"><KeyRound :size="25" /></div>
-                        <span class="passkey-eyebrow">ĐĂNG NHẬP AN TOÀN</span>
-                        <h3 id="passkey-title">Thêm Passkey</h3>
-                        <p class="passkey-modal-desc">Tạo phương thức đăng nhập nhanh bằng vân tay, khuôn mặt, mã PIN hoặc thiết bị tin cậy.</p>
-                        <div class="passkey-benefits"><span><ShieldCheck :size="15" /> Bảo mật cao</span><span><i class="bi bi-lightning-charge-fill" /> Đăng nhập nhanh</span></div>
-                        <form @submit="handleSubmit">
-                            <label for="passkey-name">Tên Passkey</label>
-                            <input id="passkey-name" v-model="name" type="text" autocomplete="off" placeholder="Ví dụ: Chrome trên Windows" autofocus />
-                            <small>Đặt tên để bạn dễ nhận biết thiết bị này sau này.</small>
-                            <InputError v-if="error" :message="error" />
-                            <div class="passkey-modal-actions"><button type="button" class="passkey-cancel" :disabled="isLoading" @click="handleCancel">Hủy</button><button type="submit" class="passkey-confirm" :disabled="isLoading || !name.trim()"><span v-if="isLoading" class="spinner-border spinner-border-sm" /><KeyRound v-else :size="15" />{{ isLoading ? 'Đang tạo...' : 'Tạo Passkey' }}</button></div>
-                        </form>
-                    </section>
-                </div>
-            </Transition>
-        </Teleport>
-    </>
+    <template v-else>
+        <button v-if="!showForm" type="button" class="passkey-add-btn" @click="showForm = true"><KeyRound :size="15" /> Thêm Passkey</button>
+        <Teleport to="body"><Transition name="passkey-modal"><div v-if="showForm" class="passkey-modal-backdrop" @click.self="handleCancel"><section class="passkey-modal" role="dialog" aria-modal="true" aria-labelledby="passkey-title"><button type="button" class="passkey-close" aria-label="Đóng" @click="handleCancel"><X :size="17" /></button><div class="passkey-modal-icon"><KeyRound :size="25" /></div><span class="passkey-eyebrow">ĐĂNG NHẬP AN TOÀN</span><h3 id="passkey-title">Thêm Passkey</h3><p class="passkey-modal-desc">Tạo phương thức đăng nhập nhanh bằng vân tay, khuôn mặt, mã PIN hoặc thiết bị tin cậy.</p><div class="passkey-benefits"><span><ShieldCheck :size="15" /> Bảo mật cao</span><span><i class="bi bi-lightning-charge-fill" /> Đăng nhập nhanh</span></div><form @submit="handleSubmit"><label for="passkey-name">Tên Passkey</label><input id="passkey-name" v-model="name" type="text" autocomplete="off" placeholder="Ví dụ: Chrome trên Windows" autofocus /><small>Đặt tên để bạn dễ nhận biết thiết bị này sau này.</small><InputError v-if="error" :message="error" /><div class="passkey-modal-actions"><button type="button" class="passkey-cancel" :disabled="isLoading" @click="handleCancel">Hủy</button><button type="submit" class="passkey-confirm" :disabled="isLoading || !name.trim()"><span v-if="isLoading" class="spinner-border spinner-border-sm" /><KeyRound v-else :size="15" />{{ isLoading ? 'Đang tạo...' : 'Tạo Passkey' }}</button></div></form></section></div></Transition></Teleport>
+    </template>
 </template>
 
 <style scoped>

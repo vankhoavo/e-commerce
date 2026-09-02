@@ -19,12 +19,14 @@ class GoogleAuthController
         $redirectUri = config('services.google.redirect');
         abort_unless($clientId && $redirectUri, 503, 'Google OAuth chưa được cấu hình.');
 
+        $returnTo = $request->string('redirect')->toString();
+        if ($returnTo !== '' && str_starts_with($returnTo, '/') && ! str_starts_with($returnTo, '//')) {
+            $request->session()->put('google_oauth_redirect', $returnTo);
+        }
+
         $state = Str::random(64);
         $request->session()->put('google_oauth_state', $state);
 
-        // Chỉ dùng OpenID Connect cơ bản cho đăng nhập.
-        // Không yêu cầu People API nên không cần các scope nhạy cảm
-        // user.phonenumbers.read / user.birthday.read.
         $query = http_build_query([
             'client_id' => $clientId,
             'redirect_uri' => $redirectUri,
@@ -74,11 +76,7 @@ class GoogleAuthController
         $accessToken = (string) $tokenResponse->json('access_token');
         abort_unless($accessToken !== '', 422, 'Không lấy được mã truy cập từ Google.');
 
-        $googleUser = Http::withToken($accessToken)
-            ->get('https://openidconnect.googleapis.com/v1/userinfo')
-            ->throw()
-            ->json();
-
+        $googleUser = Http::withToken($accessToken)->get('https://openidconnect.googleapis.com/v1/userinfo')->throw()->json();
         $googleId = data_get($googleUser, 'sub');
         $email = Str::lower((string) data_get($googleUser, 'email'));
         abort_unless($googleId && $email && (bool) data_get($googleUser, 'email_verified', false), 422, 'Tài khoản Google không cung cấp email đã xác minh.');
@@ -107,7 +105,8 @@ class GoogleAuthController
 
         Auth::login($user, remember: true);
         $request->session()->regenerate();
+        $returnTo = $request->session()->pull('google_oauth_redirect', '/');
 
-        return redirect()->intended('/');
+        return redirect()->to(is_string($returnTo) && str_starts_with($returnTo, '/') && ! str_starts_with($returnTo, '//') ? $returnTo : '/');
     }
 }

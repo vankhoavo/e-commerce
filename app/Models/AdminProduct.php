@@ -11,13 +11,16 @@ class AdminProduct extends Model
     use HasFactory;
 
     protected $fillable = [
-        'category_id', 'name', 'slug', 'sku', 'brand', 'price', 'old_price', 'stock', 'image',
-        'short_description', 'description', 'specs', 'is_active',
+        'category_id', 'name', 'slug', 'sku', 'brand', 'badge', 'rating', 'sold_count', 'price', 'old_price', 'stock', 'image', 'gallery',
+        'short_description', 'description', 'specs', 'source', 'is_active',
     ];
 
     protected function casts(): array
     {
-        return ['price' => 'integer', 'old_price' => 'integer', 'stock' => 'integer', 'specs' => 'array', 'is_active' => 'boolean'];
+        return [
+            'price' => 'integer', 'old_price' => 'integer', 'rating' => 'decimal:1', 'sold_count' => 'integer', 'stock' => 'integer',
+            'gallery' => 'array', 'specs' => 'array', 'is_active' => 'boolean',
+        ];
     }
 
     public function category(): BelongsTo

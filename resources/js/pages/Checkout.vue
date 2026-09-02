@@ -22,6 +22,7 @@ const cart = ref<CartItem[]>([]);
 const submitted = ref(false);
 const orderCode = ref('');
 const shippingError = ref('');
+const orderError = ref('');
 const paypalError = ref('');
 const paypalLoading = ref(false);
 const paypalReady = ref(false);
@@ -70,30 +71,52 @@ function clearUserCart() {
     window.dispatchEvent(new Event('techstore-cart-updated'));
 }
 
-function saveOrder(payment: string, paypalOrderId: string | null = null) {
-    orderCode.value = `TS${Date.now().toString().slice(-8)}`;
-    const order = {
-        code: orderCode.value,
-        createdAt: new Date().toISOString(),
-        customer: { ...form.value, payment },
-        items: cart.value,
-        subtotal: subtotal.value,
-        shipping: shippingFee.value,
-        totalShipping: totalShipping.value,
-        total: total.value,
-        payment,
-        paypalOrderId,
-        status: 'Chờ xử lý',
-    };
-    if (userId.value) localStorage.setItem(`techstore_last_order_user_${userId.value}`, JSON.stringify(order));
-    clearUserCart();
-    submitted.value = true;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+async function persistOrder(payment: string, paypalOrderId: string | null = null) {
+    const response = await fetch('/orders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+        },
+        body: JSON.stringify({
+            customer: { ...form.value, payment },
+            items: cart.value,
+            subtotal: subtotal.value,
+            shipping: shippingFee.value,
+            total_shipping: totalShipping.value,
+            total: total.value,
+            payment,
+            paypal_order_id: paypalOrderId,
+        }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.order?.code) throw new Error(data.message ?? 'Không thể lưu đơn hàng.');
+    return data.order;
 }
 
-function submitCod() {
+async function saveOrder(payment: string, paypalOrderId: string | null = null) {
+    orderError.value = '';
+    try {
+        const order = await persistOrder(payment, paypalOrderId);
+        orderCode.value = order.code;
+        if (userId.value) localStorage.setItem(`techstore_last_order_user_${userId.value}`, JSON.stringify(order));
+        clearUserCart();
+        submitted.value = true;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+        orderError.value = error instanceof Error ? error.message : 'Không thể lưu đơn hàng.';
+        throw error;
+    }
+}
+
+async function submitCod() {
     if (!cart.value.length || !validateShipping()) return;
-    saveOrder('cod');
+    try {
+        await saveOrder('cod');
+    } catch {
+        // Error is displayed in the checkout form.
+    }
 }
 
 function loadPaypalSdk(): Promise<void> {
@@ -139,7 +162,8 @@ async function capturePaypalOrder({ orderId }: { orderId: string }) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.status !== 'COMPLETED') throw new Error(data.message ?? 'PayPal Sandbox chưa xác nhận thanh toán.');
-    saveOrder('paypal-sandbox', orderId);
+    await saveOrder('paypal-sandbox', orderId);
+    paypalLoading.value = false;
     return data;
 }
 
@@ -174,7 +198,6 @@ async function setupPaypal() {
             paypalLoading.value = true;
             paypalError.value = '';
             try {
-                // Keep this promise reference synchronous with the click to preserve browser activation.
                 const orderPromise = createPaypalOrder();
                 await paypalSession.value.start({ presentationMode: 'auto' }, orderPromise);
             } catch (error) {
@@ -232,6 +255,7 @@ onMounted(loadCart);
                                 <div class="col-12"><label>Ghi chú</label><textarea v-model="form.note" rows="2" placeholder="Ví dụ: Giao giờ hành chính..."/></div>
                             </div>
                             <div v-if="shippingError" class="checkout-error"><i class="bi bi-exclamation-circle"/> {{ shippingError }}</div>
+                            <div v-if="orderError" class="checkout-error"><i class="bi bi-exclamation-circle"/> {{ orderError }}</div>
                         </div>
                     </section>
 

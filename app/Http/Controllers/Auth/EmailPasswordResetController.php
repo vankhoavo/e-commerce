@@ -32,13 +32,15 @@ class EmailPasswordResetController
         ]);
         $email = Str::lower(trim($validated['email']));
 
-        // Starting a new recovery request must invalidate any previous reset session.
         $this->clearSession($request);
 
         $key = 'password-reset:'.sha1($email.'|'.$request->ip());
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
-            return back()->withErrors(['email' => "Vui lòng thử lại sau {$seconds} giây."]);
+
+            return back()->withErrors([
+                'email' => "Vui lòng thử lại sau {$seconds} giây.",
+            ]);
         }
         RateLimiter::hit($key, 300);
 
@@ -55,7 +57,10 @@ class EmailPasswordResetController
             $code = $otp->send($user);
         } catch (\Throwable $exception) {
             report($exception);
-            return back()->withErrors(['email' => 'Không thể gửi mã OTP lúc này. Vui lòng kiểm tra cấu hình Email.']);
+
+            return back()->withErrors([
+                'email' => 'Không thể gửi mã OTP lúc này. Vui lòng kiểm tra cấu hình Email.',
+            ]);
         }
 
         $request->session()->put([
@@ -64,7 +69,8 @@ class EmailPasswordResetController
             'password_reset_verified' => false,
         ]);
 
-        return to_route('password.email.verify');
+        return to_route('password.email.verify')
+            ->with('status', 'Mã OTP đã được gửi đến email của bạn.');
     }
 
     public function showVerify(Request $request): Response|RedirectResponse
@@ -74,6 +80,7 @@ class EmailPasswordResetController
             if ($code) {
                 $code->delete();
             }
+
             $this->clearSession($request);
 
             return to_route('password.email.request');
@@ -81,6 +88,7 @@ class EmailPasswordResetController
 
         return Inertia::render('auth/VerifyPasswordReset', [
             'email' => $this->maskEmail($code->email),
+            'status' => session('status'),
         ]);
     }
 
@@ -89,7 +97,9 @@ class EmailPasswordResetController
         $code = $this->pendingCode($request);
         if (! $code) {
             $this->clearSession($request);
-            return to_route('password.email.request')->withErrors(['email' => 'Phiên khôi phục đã hết hạn.']);
+
+            return to_route('password.email.request')
+                ->withErrors(['email' => 'Phiên khôi phục đã hết hạn.']);
         }
 
         $validated = $request->validate([
@@ -99,21 +109,28 @@ class EmailPasswordResetController
         if ($code->expired()) {
             $this->clearSession($request);
             $code->delete();
-            return to_route('password.email.request')->withErrors(['email' => 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.']);
+
+            return to_route('password.email.request')->withErrors([
+                'email' => 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
+            ]);
         }
 
         if ($code->attempts >= 5) {
             $this->clearSession($request);
             $code->delete();
-            return to_route('password.email.request')->withErrors(['email' => 'Bạn đã nhập sai quá số lần cho phép. Vui lòng yêu cầu mã mới.']);
+
+            return to_route('password.email.request')->withErrors([
+                'email' => 'Bạn đã nhập sai quá số lần cho phép. Vui lòng yêu cầu mã mới.',
+            ]);
         }
 
         if (! Hash::check($validated['code'], $code->code_hash)) {
             $code->increment('attempts');
+
             return back()->withErrors(['code' => 'Mã OTP không chính xác.']);
         }
 
-        $code->update(['used_at' => now()]);
+        $code->update(['verified_at' => now()]);
         $request->session()->put('password_reset_verified', true);
 
         return to_route('password.email.reset');
@@ -124,6 +141,7 @@ class EmailPasswordResetController
         $user = $this->pendingUser($request);
         if (! $user) {
             $this->clearSession($request);
+
             return to_route('password.email.request');
         }
 
@@ -131,7 +149,10 @@ class EmailPasswordResetController
             $code = $otp->send($user);
         } catch (\Throwable $exception) {
             report($exception);
-            return back()->withErrors(['email' => 'Không thể gửi lại mã OTP lúc này. Vui lòng thử lại sau.']);
+
+            return back()->withErrors([
+                'code' => 'Không thể gửi lại mã OTP lúc này. Vui lòng thử lại sau.',
+            ]);
         }
 
         $request->session()->put([
@@ -148,8 +169,18 @@ class EmailPasswordResetController
             return to_route('password.email.request');
         }
 
+        $code = $this->pendingCode($request);
+        if (! $code || ! $code->verified_at || $code->expired()) {
+            $this->clearSession($request);
+
+            return to_route('password.email.request')->withErrors([
+                'email' => 'Phiên xác thực OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
+            ]);
+        }
+
         if (! $this->pendingUser($request)) {
             $this->clearSession($request);
+
             return to_route('password.email.request');
         }
 
@@ -158,10 +189,21 @@ class EmailPasswordResetController
 
     public function resetPassword(Request $request): RedirectResponse
     {
-        $user = $this->pendingUser($request);
-        if (! $request->session()->get('password_reset_verified') || ! $user) {
+        if (! $request->session()->get('password_reset_verified')) {
             $this->clearSession($request);
+
             return to_route('password.email.request');
+        }
+
+        $user = $this->pendingUser($request);
+        $code = $this->pendingCode($request);
+
+        if (! $user || ! $code || ! $code->verified_at || $code->expired()) {
+            $this->clearSession($request);
+
+            return to_route('password.email.request')->withErrors([
+                'email' => 'Phiên xác thực OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
+            ]);
         }
 
         $validated = $request->validate([
@@ -172,9 +214,13 @@ class EmailPasswordResetController
             'password' => $validated['password'],
         ])->save();
 
+        $code->update(['used_at' => now()]);
         $this->clearSession($request);
 
-        return to_route('login')->with('status', 'Mật khẩu đã được đặt lại thành công. Bạn có thể đăng nhập bằng mật khẩu mới.');
+        return to_route('login')->with(
+            'status',
+            'Mật khẩu đã được đặt lại thành công. Bạn có thể đăng nhập bằng mật khẩu mới.',
+        );
     }
 
     private function pendingCode(Request $request): ?PasswordResetCode

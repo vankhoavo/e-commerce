@@ -45,10 +45,13 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::authenticateUsing(function (Request $request): ?User {
-            $email = Str::lower(trim($request->string('email')->toString()));
+            $identifier = trim($request->input('email', ''));
             $password = $request->string('password')->toString();
 
-            $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+            $user = User::query()
+                ->when(strcasecmp($identifier, 'admin') === 0, fn ($query) => $query->where('role', UserRole::ADMIN->value)->whereRaw('LOWER(name) = ?', ['admin']))
+                ->when(strcasecmp($identifier, 'admin') !== 0, fn ($query) => $query->whereRaw('LOWER(email) = ?', [Str::lower($identifier)]))
+                ->first();
 
             if (! $user || ! $user->is_active) {
                 return null;
@@ -60,14 +63,8 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', [
-            'status' => $request->session()->get('status'),
-        ]));
-
-        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/VerifyEmail', [
-            'status' => $request->session()->get('status'),
-        ]));
-
+        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', ['status' => $request->session()->get('status')]));
+        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/VerifyEmail', ['status' => $request->session()->get('status')]));
         Fortify::registerView(fn () => Inertia::render('auth/Register'));
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
         Fortify::confirmPasswordView(fn () => Inertia::render('auth/ConfirmPassword'));

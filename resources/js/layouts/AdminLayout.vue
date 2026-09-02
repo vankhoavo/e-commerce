@@ -15,7 +15,6 @@ const leaveAdmin = () => {
     router.post('/logout', {}, {
         preserveScroll: false,
         onSuccess: () => window.location.assign('/'),
-        onError: () => window.location.assign('/'),
     });
 };
 </script>

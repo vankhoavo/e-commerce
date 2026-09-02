@@ -129,7 +129,7 @@ class AdminController extends Controller
         return back()->with('success', 'Đã cập nhật phí vận chuyển.');
     }
 
-    public function users(Request $request, string $role): Response
+    public function users(string $role): Response
     {
         abort_unless(in_array($role, [UserRole::CUSTOMER->value, UserRole::STAFF->value], true), 404);
         return Inertia::render($role === 'customer' ? 'admin/Customers' : 'admin/Employees', ['users' => User::query()->where('role', $role)->latest()->paginate(15)->withQueryString(), 'role' => $role]);

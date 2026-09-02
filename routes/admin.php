@@ -12,6 +12,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/products', [AdminController::class, 'productStore'])->name('products.store');
     Route::patch('/products/{product}', [AdminController::class, 'productUpdate'])->name('products.update');
     Route::patch('/products/{product}/toggle', [AdminController::class, 'productToggle'])->name('products.toggle');
+    Route::get('/inventory', [AdminController::class, 'inventory'])->name('inventory');
     Route::get('/coupons', [AdminController::class, 'coupons'])->name('coupons');
     Route::post('/coupons', [AdminController::class, 'couponStore'])->name('coupons.store');
     Route::get('/shipping', [AdminController::class, 'shipping'])->name('shipping');

@@ -2,11 +2,9 @@
 
 namespace App\Actions\Fortify;
 
-use App\Actions\Teams\CreateTeam;
 use App\Concerns\PasswordValidationRules;
 use App\Models\User;
 use App\Services\EmailOtpService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -16,7 +14,6 @@ class CreateNewUser implements CreatesNewUsers
     use PasswordValidationRules;
 
     public function __construct(
-        private CreateTeam $createTeam,
         private EmailOtpService $emailOtpService,
     ) {}
 
@@ -60,19 +57,12 @@ class CreateNewUser implements CreatesNewUsers
             return $googleUser->fresh();
         }
 
-        $user = DB::transaction(function () use ($input, $email): User {
-            $user = User::create([
-                'name' => $input['name'],
-                'email' => $email,
-                'password' => $input['password'],
-            ]);
+        $user = User::create([
+            'name' => $input['name'],
+            'email' => $email,
+            'password' => $input['password'],
+        ]);
 
-            $this->createTeam->handle($user, $user->name."'s Team", isPersonal: true);
-
-            return $user;
-        });
-
-        // A normal registration must still verify ownership of the mailbox.
         $this->emailOtpService->send($user, $user->email);
 
         return $user;

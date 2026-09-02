@@ -78,6 +78,32 @@ class EmailPasswordResetOtpTest extends TestCase
         $this->assertTrue(Hash::check('New-password-123', $user->fresh()->password));
     }
 
+    public function test_resend_replaces_the_previous_otp(): void
+    {
+        $user = User::factory()->create();
+        $this->fakeOtpFor($user, '123456');
+
+        $this->post(route('password.email.send'), [
+            'email' => $user->email,
+        ]);
+
+        $this->fakeOtpFor($user, '654321');
+
+        $this->post(route('password.email.verify.resend'))
+            ->assertRedirect(route('password.email.verify'))
+            ->assertSessionHas('status', 'Mã OTP mới đã được gửi. Vui lòng kiểm tra hộp thư.');
+
+        $codes = PasswordResetCode::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->get();
+
+        $this->assertCount(1, $codes);
+        $this->assertTrue(Hash::check('654321', $codes->first()->code_hash));
+        $this->assertSame($codes->first()->id, session('password_reset_code_id'));
+        $this->assertFalse(session('password_reset_verified'));
+    }
+
     public function test_invalid_otp_increments_attempts(): void
     {
         $user = User::factory()->create();

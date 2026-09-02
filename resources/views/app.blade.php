@@ -13,7 +13,9 @@
 
         <style>
             html.techstore-booting #app,
-            body.techstore-booting #app {
+            body.techstore-booting #app,
+            html.techstore-page-loading #app,
+            body.techstore-page-loading #app {
                 visibility: hidden !important;
             }
 

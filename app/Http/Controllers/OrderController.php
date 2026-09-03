@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderReceivedMail;
 use App\Models\AdminProduct;
 use App\Models\Order;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class OrderController extends Controller
@@ -46,6 +49,14 @@ class OrderController extends Controller
             foreach($data['items'] as $item){$product=$products->get($item['id']);$order->items()->create(['product_id'=>$product->id,'name'=>$product->name,'image'=>$product->image,'price'=>(int)$product->price,'quantity'=>$item['quantity'],'total'=>(int)$product->price*(int)$item['quantity']]);}
             return $order->load('items');
         });
+
+        $recipient=$order->customer_email ?: $request->user()->email;
+        try {
+            Mail::to($recipient)->send(new OrderReceivedMail($order));
+        } catch (\Throwable $exception) {
+            Log::warning('Không thể gửi Email xác nhận đơn hàng.', ['order_id'=>$order->id,'recipient'=>$recipient,'error'=>$exception->getMessage()]);
+        }
+
         return response()->json(['order'=>$this->transform($order)],201);
     }
 

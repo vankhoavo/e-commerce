@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Settings, UserRound, ShieldCheck, Palette, ReceiptText } from '@lucide/vue';
-import { onBeforeUnmount, onMounted, provide, ref } from 'vue';
+import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import Orders from '@/components/settings/OrdersDatabase.vue';
 
 export type SettingsSection = 'profile' | 'security' | 'appearance' | 'orders';
@@ -17,9 +17,11 @@ function readInitialSection(): SettingsSection { if (typeof window === 'undefine
 const activeSection = ref<SettingsSection>(readInitialSection());
 provide('techstore-settings-section', activeSection);
 function persistSection(section: SettingsSection): void { if (typeof document !== 'undefined') document.body.dataset.techstoreSettingsSection = section; if (typeof window !== 'undefined') { try { window.sessionStorage.setItem(SETTINGS_STORAGE_KEY, section); } catch {} } }
-function syncSectionFromNavigation(): void { if (typeof window === 'undefined') return; const urlValue = new URLSearchParams(window.location.search).get('section'); const historyValue = window.history.state?.settingsSection; const section = isSettingsSection(urlValue) ? urlValue : typeof historyValue === 'string' && isSettingsSection(historyValue) ? historyValue : readStoredSection() ?? 'profile'; activeSection.value = section; persistSection(section); }
+function navigationSection(): SettingsSection | null { if (typeof window === 'undefined') return null; const urlValue = new URLSearchParams(window.location.search).get('section'); if (isSettingsSection(urlValue)) return urlValue; const historyValue = window.history.state?.settingsSection; return typeof historyValue === 'string' && isSettingsSection(historyValue) ? historyValue : null; }
+function syncSectionFromNavigation(): void { if (typeof window === 'undefined') return; const section = navigationSection() ?? readStoredSection() ?? 'profile'; activeSection.value = section; persistSection(section); }
 function selectSection(section: SettingsSection): void { if (!settingsNavItems.some((item) => item.key === section)) return; activeSection.value = section; persistSection(section); if (typeof window !== 'undefined') { const url = new URL(window.location.href); url.pathname = '/settings/profile'; if (section === 'profile') url.searchParams.delete('section'); else url.searchParams.set('section', section); window.history.pushState({ ...(window.history.state ?? {}), settingsSection: section }, '', `${url.pathname}${url.search}${url.hash}`); } }
-onMounted(() => { syncSectionFromNavigation(); window.addEventListener('popstate', syncSectionFromNavigation); });
+watch(activeSection, (section) => { const requested = navigationSection(); if (requested && requested !== section) { activeSection.value = requested; persistSection(requested); } });
+onMounted(() => { syncSectionFromNavigation(); window.addEventListener('popstate', syncSectionFromNavigation); window.setTimeout(syncSectionFromNavigation, 0); });
 onBeforeUnmount(() => { window.removeEventListener('popstate', syncSectionFromNavigation); });
 </script>
 <template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Settings, UserRound, ShieldCheck, Palette, ReceiptText } from '@lucide/vue';
+import { usePage } from '@inertiajs/vue3';
 import { onBeforeUnmount, onMounted, provide, readonly, ref, watch } from 'vue';
 import Orders from '@/components/settings/OrdersDatabase.vue';
 
@@ -11,18 +12,21 @@ const settingsNavItems: { key: SettingsSection; title: string; description: stri
     { key: 'appearance', title: 'Giao diện', description: 'Tùy chỉnh hiển thị', icon: Palette },
     { key: 'orders', title: 'Đơn hàng', description: 'Lịch sử & hóa đơn', icon: ReceiptText },
 ];
+const page = usePage();
 function isSettingsSection(value: string | null): value is SettingsSection { return value !== null && settingsNavItems.some((item) => item.key === value); }
-function readStoredSection(): SettingsSection | null { if (typeof window === 'undefined') return null; try { const storedValue = window.sessionStorage.getItem(SETTINGS_STORAGE_KEY); return isSettingsSection(storedValue) ? storedValue : null; } catch { return null; } }
-function readInitialSection(): SettingsSection { if (typeof window === 'undefined') return 'profile'; const urlValue = new URLSearchParams(window.location.search).get('section'); if (isSettingsSection(urlValue)) return urlValue; const historyValue = window.history.state?.settingsSection; if (typeof historyValue === 'string' && isSettingsSection(historyValue)) return historyValue; return readStoredSection() ?? 'profile'; }
-const activeSection = ref<SettingsSection>(readInitialSection());
-provide('techstore-settings-section', readonly(activeSection));
-function persistSection(section: SettingsSection): void { if (typeof document !== 'undefined') document.body.dataset.techstoreSettingsSection = section; if (typeof window !== 'undefined') { try { window.sessionStorage.setItem(SETTINGS_STORAGE_KEY, section); } catch {} } }
-function navigationSection(): SettingsSection | null { if (typeof window === 'undefined') return null; const urlValue = new URLSearchParams(window.location.search).get('section'); if (isSettingsSection(urlValue)) return urlValue; const historyValue = window.history.state?.settingsSection; return typeof historyValue === 'string' && isSettingsSection(historyValue) ? historyValue : null; }
-function syncSectionFromNavigation(): void { if (typeof window === 'undefined') return; const section = navigationSection() ?? readStoredSection() ?? 'profile'; activeSection.value = section; persistSection(section); }
-function selectSection(section: SettingsSection): void { if (!settingsNavItems.some((item) => item.key === section)) return; activeSection.value = section; persistSection(section); if (typeof window !== 'undefined') { const url = new URL(window.location.href); url.pathname = '/settings/profile'; if (section === 'profile') url.searchParams.delete('section'); else url.searchParams.set('section', section); window.history.pushState({ ...(window.history.state ?? {}), settingsSection: section }, '', `${url.pathname}${url.search}${url.hash}`); } }
-watch(activeSection, (section) => { const requested = navigationSection(); if (requested && requested !== section) { activeSection.value = requested; persistSection(requested); } });
-onMounted(() => { syncSectionFromNavigation(); window.addEventListener('popstate', syncSectionFromNavigation); window.setTimeout(syncSectionFromNavigation, 0); });
-onBeforeUnmount(() => { window.removeEventListener('popstate', syncSectionFromNavigation); });
+function readStoredSection(): SettingsSection | null { if (typeof window === 'undefined') return null; try { const storedValue=window.sessionStorage.getItem(SETTINGS_STORAGE_KEY); return isSettingsSection(storedValue)?storedValue:null; } catch { return null; } }
+function readUrlSection(): SettingsSection | null { if (typeof window === 'undefined') return null; const urlValue=new URLSearchParams(window.location.search).get('section'); return isSettingsSection(urlValue)?urlValue:null; }
+function readInitialSection(): SettingsSection { return readUrlSection() ?? readStoredSection() ?? 'profile'; }
+const activeSection=ref<SettingsSection>(readInitialSection());
+provide('techstore-settings-section',readonly(activeSection));
+function persistSection(section:SettingsSection):void { if(typeof document!=='undefined')document.body.dataset.techstoreSettingsSection=section; if(typeof window!=='undefined'){try{window.sessionStorage.setItem(SETTINGS_STORAGE_KEY,section);}catch{}} }
+function navigationSection():SettingsSection|null { return readUrlSection() ?? (typeof window!=='undefined' && typeof window.history.state?.settingsSection==='string' && isSettingsSection(window.history.state.settingsSection)?window.history.state.settingsSection:null); }
+function syncSectionFromNavigation():void { const section=navigationSection()??readStoredSection()??'profile'; if(activeSection.value!==section)activeSection.value=section; persistSection(section); }
+function selectSection(section:SettingsSection):void { if(!settingsNavItems.some((item)=>item.key===section))return; activeSection.value=section; persistSection(section); if(typeof window!=='undefined'){const url=new URL(window.location.href);url.pathname='/settings/profile';if(section==='profile')url.searchParams.delete('section');else url.searchParams.set('section',section);window.history.pushState({...window.history.state,settingsSection:section},'',`${url.pathname}${url.search}${url.hash}`);}}
+watch(activeSection,(section)=>{const requested=navigationSection()??readStoredSection();if(requested&&requested!==section){activeSection.value=requested;persistSection(requested);}});
+watch(()=>page.url,()=>{syncSectionFromNavigation();});
+onMounted(()=>{syncSectionFromNavigation();window.addEventListener('popstate',syncSectionFromNavigation);window.setTimeout(syncSectionFromNavigation,0);});
+onBeforeUnmount(()=>{window.removeEventListener('popstate',syncSectionFromNavigation);});
 </script>
 <template>
     <div class="settings-page-shell">

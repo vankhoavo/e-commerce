@@ -1,0 +1,1 @@
+<h2>Chào mừng {{ $user->name }} đến với TechStore</h2><p>Tài khoản của bạn đã được tạo thành công. Vui lòng hoàn tất xác thực Email OTP để sử dụng đầy đủ chức năng mua hàng.</p><p>TechStore · 0905955162 · vankhoa.work@gmail.com</p>

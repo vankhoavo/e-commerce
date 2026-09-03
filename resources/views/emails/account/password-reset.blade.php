@@ -1,0 +1,1 @@
+<h2>Khôi phục mật khẩu TechStore thành công</h2><p>Xin chào {{ $user->name }}, mật khẩu của bạn đã được khôi phục bằng quy trình xác thực OTP qua Email.</p><p>Nếu bạn không thực hiện thao tác này, hãy liên hệ TechStore: 0905955162 · vankhoa.work@gmail.com.</p>

@@ -1,18 +1,154 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';import { Head, Link, router, usePage } from '@inertiajs/vue3';import { formatPrice } from '@/data/products';import { getCartStorageKey, readCart, writeCart, type CartItem } from '@/lib/cart';
-type PaypalSession={start:(options:{presentationMode:string},order:Promise<{orderId:string}>)=>Promise<void>};type PaypalSdk={findEligibleMethods:(o?:{currencyCode?:string})=>Promise<{isEligible:(m:string)=>boolean}>;createPayPalOneTimePaymentSession:(o:any)=>PaypalSession};declare global{interface Window{paypal?:{createInstance:(o:any)=>Promise<PaypalSdk>}}}
-const page=usePage();const user=computed(()=>((page.props as any).auth?.user??null) as any);const userId=computed(()=>user.value?.id??null);const cart=ref<CartItem[]>([]);const buyNow=ref(false);const submitted=ref(false);const error=ref('');const coupon=ref('');const couponInfo=ref<any>(null);const couponError=ref('');const couponLoading=ref(false);const paypalReady=ref(false);const paypalError=ref('');const form=ref({name:'',phone:'',email:'',address:'',note:'',payment:'cod',vat:{requested:false,companyName:'',taxCode:'',address:'',email:''}});const paypalClientId=String(import.meta.env.VITE_PAYPAL_CLIENT_ID??'').trim();const COD=30000;const USD_RATE=25000;
-const subtotal=computed(()=>cart.value.reduce((n,x)=>n+x.price*x.quantity,0));const discount=computed(()=>Number(couponInfo.value?.discount??0));const shipping=computed(()=>form.value.payment==='cod'&&cart.value.length?COD:0);const total=computed(()=>Math.max(0,subtotal.value-discount.value+shipping.value));const usd=computed(()=>Math.max(1,Math.round(total.value/USD_RATE*100)/100));
-function loadCart(){if(!userId.value)return;const params=new URLSearchParams(window.location.search);buyNow.value=params.get('buy_now')==='1';if(buyNow.value){try{const raw=localStorage.getItem('techstore_buy_now');const item=raw?JSON.parse(raw):null;if(item?.id)cart.value=[{id:Number(item.id),name:String(item.name),price:Number(item.price),image:String(item.image??''),quantity:Math.max(1,Number(item.quantity)||1)}]}catch{cart.value=[]}}else cart.value=readCart(userId.value);form.value.name=user.value?.name??'';form.value.phone=user.value?.phone??'';form.value.email=user.value?.email??'';form.value.address=user.value?.address??''}
-async function applyCoupon(){couponError.value='';couponInfo.value=null;if(!coupon.value.trim())return;couponLoading.value=true;try{const token=document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content??'';const r=await fetch('/member/coupons/validate',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({code:coupon.value,subtotal:subtotal.value})});const d=await r.json();if(!r.ok)throw new Error(d.message??'Mã giảm giá không hợp lệ.');couponInfo.value=d}catch(e){couponError.value=e instanceof Error?e.message:'Mã giảm giá không hợp lệ.'}finally{couponLoading.value=false}}
-function clearCart(){if(buyNow.value)localStorage.removeItem('techstore_buy_now');else if(userId.value)writeCart(userId.value,[]);window.dispatchEvent(new Event('techstore-cart-updated'))}
-async function saveOrder(payment='cod',paypalOrderId?:string){if(!form.value.name.trim()||!form.value.phone.trim()||!form.value.address.trim()){error.value='Vui lòng nhập họ tên, số điện thoại và địa chỉ.';return null}if(form.value.vat.requested&&!form.value.vat.email.trim()){error.value='Vui lòng nhập Email nhận hóa đơn VAT.';return null}const token=document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content??'';const payload={customer:{name:form.value.name,phone:form.value.phone,email:form.value.email||null,address:form.value.address,note:form.value.note||null},items:cart.value.map(x=>({id:x.id,name:x.name,image:x.image,price:x.price,quantity:x.quantity})),subtotal:subtotal.value,shipping:shipping.value,total_shipping:shipping.value,total:total.value,payment,paypal_order_id:paypalOrderId??null,coupon_code:couponInfo.value?.coupon?.code??coupon.value.trim()||null,vat_invoice:{requested:form.value.vat.requested,company_name:form.value.vat.companyName,tax_code:form.value.vat.taxCode,address:form.value.vat.address,email:form.value.vat.email}};const r=await fetch('/orders',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify(payload)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message??'Không thể tạo đơn hàng.');submitted.value=true;clearCart();return d.order}
-async function codSubmit(){error.value='';try{const order=await saveOrder('cod');if(order)window.setTimeout(()=>router.visit('/settings/profile?section=orders'),500)}catch(e){error.value=e instanceof Error?e.message:'Không thể đặt hàng.'}}
-function loadPaypalSdk():Promise<void>{if(window.paypal)return Promise.resolve();if(!paypalClientId)return Promise.reject(new Error('TechStore chưa cấu hình PayPal Sandbox Client ID.'));return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://www.sandbox.paypal.com/web-sdk/v6/core';s.async=true;s.onload=()=>resolve();s.onerror=()=>reject(new Error('Không tải được PayPal Sandbox.'));document.head.appendChild(s)})}
-async function setupPaypal(){if(paypalReady.value||!paypalClientId)return;try{await loadPaypalSdk();const sdk=await window.paypal!.createInstance({clientId:paypalClientId,components:['paypal-payments'],pageType:'checkout'});const methods=await sdk.findEligibleMethods({currencyCode:'USD'});if(!methods.isEligible('paypal'))throw new Error('PayPal Sandbox hiện không khả dụng.');const session=sdk.createPayPalOneTimePaymentSession({onApprove:async({orderId}:{orderId:string})=>{try{const token=document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content??'';const r=await fetch(`/paypal/orders/${orderId}/capture`,{method:'POST',headers:{Accept:'application/json','X-CSRF-TOKEN':token}});const d=await r.json();if(!r.ok||d.status!=='COMPLETED')throw new Error(d.message??'PayPal chưa hoàn tất thanh toán.');const order=await saveOrder('paypal-sandbox',orderId);if(order)window.setTimeout(()=>router.visit('/settings/profile?section=orders'),500)}catch(e){paypalError.value=e instanceof Error?e.message:'Không thể hoàn tất PayPal.'}},onCancel:()=>{paypalError.value='Bạn đã hủy thanh toán PayPal.'},onError:(e:any)=>{paypalError.value=e?.message??'PayPal Sandbox gặp lỗi.'}});(window as any).__techstorePaypalSession=session;paypalReady.value=true}catch(e){paypalError.value=e instanceof Error?e.message:'Không thể tải PayPal Sandbox.'}}
-async function startPaypal(){error.value='';paypalError.value='';try{if(!paypalReady.value)await setupPaypal();const session=(window as any).__techstorePaypalSession as PaypalSession|null;if(!session)throw new Error('PayPal Sandbox chưa sẵn sàng.');const create=async()=>{const token=document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content??'';const r=await fetch('/paypal/orders',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({amount_vnd:total.value})});const d=await r.json();if(!r.ok||!d.id)throw new Error(d.message??'Không thể tạo giao dịch PayPal.');return{orderId:String(d.id)}};await session.start({presentationMode:'auto'},create())}catch(e){paypalError.value=e instanceof Error?e.message:'Không thể mở PayPal Sandbox.'}}
-onMounted(()=>{loadCart();setupPaypal()});
+import { computed, onMounted, ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { formatPrice } from '@/data/products';
+import { readCart, writeCart, type CartItem } from '@/lib/cart';
+
+type PaypalSession = { start: (options: { presentationMode: string }, order: Promise<{ orderId: string }>) => Promise<void> };
+type PaypalSdk = { findEligibleMethods: (options?: { currencyCode?: string }) => Promise<{ isEligible: (method: string) => boolean }>; createPayPalOneTimePaymentSession: (options: any) => PaypalSession };
+declare global { interface Window { paypal?: { createInstance: (options: any) => Promise<PaypalSdk> }; __techstorePaypalSession?: PaypalSession } }
+
+const page = usePage();
+const user = computed(() => ((page.props as any).auth?.user ?? null) as any);
+const userId = computed(() => user.value?.id ?? null);
+const cart = ref<CartItem[]>([]);
+const buyNow = ref(false);
+const submitted = ref(false);
+const error = ref('');
+const coupon = ref('');
+const couponInfo = ref<any>(null);
+const couponError = ref('');
+const couponLoading = ref(false);
+const paypalReady = ref(false);
+const paypalError = ref('');
+const form = ref({ name: '', phone: '', email: '', address: '', note: '', payment: 'cod', vat: { requested: false, companyName: '', taxCode: '', address: '', email: '' } });
+const paypalClientId = String(import.meta.env.VITE_PAYPAL_CLIENT_ID ?? '').trim();
+const COD = 30000;
+const USD_RATE = 25000;
+const subtotal = computed(() => cart.value.reduce((sum, item) => sum + item.price * item.quantity, 0));
+const discount = computed(() => Number(couponInfo.value?.coupon?.discountAmount ?? couponInfo.value?.discount ?? 0));
+const shipping = computed(() => form.value.payment === 'cod' && cart.value.length ? COD : 0);
+const total = computed(() => Math.max(0, subtotal.value - discount.value + shipping.value));
+const clearCart = () => { if (buyNow.value) localStorage.removeItem('techstore_buy_now'); else if (userId.value) writeCart(userId.value, []); window.dispatchEvent(new Event('techstore-cart-updated')); };
+
+function loadCart() {
+    if (!userId.value) return;
+    const params = new URLSearchParams(window.location.search);
+    buyNow.value = params.get('buy_now') === '1';
+    if (buyNow.value) {
+        try {
+            const raw = localStorage.getItem('techstore_buy_now');
+            const item = raw ? JSON.parse(raw) : null;
+            if (item?.id) cart.value = [{ id: Number(item.id), name: String(item.name), price: Number(item.price), image: String(item.image ?? ''), quantity: Math.max(1, Number(item.quantity) || 1) }];
+        } catch { cart.value = []; }
+    } else cart.value = readCart(userId.value);
+    form.value.name = user.value?.name ?? '';
+    form.value.phone = user.value?.phone ?? '';
+    form.value.email = user.value?.email ?? '';
+    form.value.address = user.value?.address ?? '';
+}
+
+async function applyCoupon() {
+    couponError.value = '';
+    couponInfo.value = null;
+    if (!coupon.value.trim()) return;
+    couponLoading.value = true;
+    try {
+        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+        const response = await fetch('/member/coupons/validate', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ code: coupon.value.trim(), subtotal: subtotal.value }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message ?? 'Mã giảm giá không hợp lệ.');
+        couponInfo.value = data;
+    } catch (e) { couponError.value = e instanceof Error ? e.message : 'Mã giảm giá không hợp lệ.'; }
+    finally { couponLoading.value = false; }
+}
+
+async function saveOrder(payment = 'cod', paypalOrderId?: string) {
+    if (!form.value.name.trim() || !form.value.phone.trim() || !form.value.address.trim()) { error.value = 'Vui lòng nhập họ tên, số điện thoại và địa chỉ.'; return null; }
+    if (form.value.vat.requested && !form.value.vat.email.trim()) { error.value = 'Vui lòng nhập Email nhận hóa đơn VAT.'; return null; }
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+    const couponCode = (couponInfo.value?.coupon?.code ?? coupon.value.trim()) || null;
+    const payload = {
+        customer: { name: form.value.name, phone: form.value.phone, email: form.value.email || null, address: form.value.address, note: form.value.note || null },
+        items: cart.value.map(item => ({ id: item.id, name: item.name, image: item.image, price: item.price, quantity: item.quantity })),
+        subtotal: subtotal.value, shipping: shipping.value, total_shipping: shipping.value, total: total.value, payment, paypal_order_id: paypalOrderId ?? null, coupon_code: couponCode,
+        vat_invoice: { requested: form.value.vat.requested, company_name: form.value.vat.companyName, tax_code: form.value.vat.taxCode, address: form.value.vat.address, email: form.value.vat.email },
+    };
+    const response = await fetch('/orders', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify(payload) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message ?? 'Không thể tạo đơn hàng.');
+    submitted.value = true;
+    clearCart();
+    return data.order;
+}
+
+async function codSubmit() { error.value = ''; try { const order = await saveOrder('cod'); if (order) window.setTimeout(() => router.visit('/settings/profile?section=orders'), 500); } catch (e) { error.value = e instanceof Error ? e.message : 'Không thể đặt hàng.'; } }
+
+function loadPaypalSdk(): Promise<void> {
+    if (window.paypal) return Promise.resolve();
+    if (!paypalClientId) return Promise.reject(new Error('TechStore chưa cấu hình PayPal Sandbox Client ID.'));
+    return new Promise((resolve, reject) => {
+        const existing = document.querySelector<HTMLScriptElement>('script[data-techstore-paypal-v6]');
+        if (existing) { existing.addEventListener('load', () => resolve(), { once: true }); existing.addEventListener('error', () => reject(new Error('Không tải được PayPal Sandbox.')), { once: true }); return; }
+        const script = document.createElement('script'); script.src = 'https://www.sandbox.paypal.com/web-sdk/v6/core'; script.async = true; script.dataset.techstorePaypalV6 = 'true'; script.onload = () => resolve(); script.onerror = () => reject(new Error('Không tải được PayPal Sandbox.')); document.head.appendChild(script);
+    });
+}
+
+async function setupPaypal() {
+    if (paypalReady.value || !paypalClientId) return;
+    try {
+        await loadPaypalSdk();
+        const sdk = await window.paypal!.createInstance({ clientId: paypalClientId, components: ['paypal-payments'], pageType: 'checkout' });
+        const methods = await sdk.findEligibleMethods({ currencyCode: 'USD' });
+        if (!methods.isEligible('paypal')) throw new Error('PayPal Sandbox hiện không khả dụng.');
+        window.__techstorePaypalSession = sdk.createPayPalOneTimePaymentSession({
+            onApprove: async ({ orderId }: { orderId: string }) => {
+                try {
+                    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+                    const response = await fetch(`/paypal/orders/${orderId}/capture`, { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': token } });
+                    const data = await response.json();
+                    if (!response.ok || data.status !== 'COMPLETED') throw new Error(data.message ?? 'PayPal chưa hoàn tất thanh toán.');
+                    const order = await saveOrder('paypal-sandbox', orderId);
+                    if (order) window.setTimeout(() => router.visit('/settings/profile?section=orders'), 500);
+                } catch (e) { paypalError.value = e instanceof Error ? e.message : 'Không thể hoàn tất PayPal.'; }
+            },
+            onCancel: () => { paypalError.value = 'Bạn đã hủy thanh toán PayPal.'; },
+            onError: (e: any) => { paypalError.value = e?.message ?? 'PayPal Sandbox gặp lỗi.' },
+        });
+        paypalReady.value = true;
+    } catch (e) { paypalError.value = e instanceof Error ? e.message : 'Không thể tải PayPal Sandbox.'; }
+}
+
+async function startPaypal() {
+    error.value = ''; paypalError.value = '';
+    try {
+        if (!paypalReady.value) await setupPaypal();
+        const session = window.__techstorePaypalSession;
+        if (!session) throw new Error('PayPal Sandbox chưa sẵn sàng.');
+        const createOrder = async () => {
+            const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+            const response = await fetch('/paypal/orders', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ amount_vnd: total.value, usd_amount: Math.max(1, Math.round(total.value / USD_RATE * 100) / 100) }) });
+            const data = await response.json();
+            if (!response.ok || !data.id) throw new Error(data.message ?? 'Không thể tạo giao dịch PayPal.');
+            return { orderId: String(data.id) };
+        };
+        await session.start({ presentationMode: 'auto' }, createOrder());
+    } catch (e) { paypalError.value = e instanceof Error ? e.message : 'Không thể mở PayPal Sandbox.'; }
+}
+
+onMounted(() => { loadCart(); void setupPaypal(); });
 </script>
-<template><Head title="Tiến hành đặt hàng"/><main class="checkout"><div class="wrap"><nav class="crumb"><Link href="/">Trang chủ</Link><i class="bi bi-chevron-right"/>Tiến hành đặt hàng</nav><header class="head"><div><span>TECHSTORE · THANH TOÁN</span><h1>Tiến hành đặt hàng</h1><p>{{buyNow?'Mua ngay một sản phẩm · số lượng theo lựa chọn.':'Xác nhận thông tin, mã ưu đãi và phương thức thanh toán.'}}</p></div></header><div v-if="submitted" class="success"><i class="bi bi-check-circle-fill"/><div><strong>Đặt hàng thành công</strong><p>Đơn hàng đã được tạo. TechStore sẽ gửi Email xác nhận.</p></div></div><div v-else-if="!cart.length" class="empty"><i class="bi bi-cart-x"/><h2>Không có sản phẩm để đặt hàng</h2><Link href="/products" class="btn btn-primary">Khám phá sản phẩm</Link></div><div v-else class="grid"><section class="panel"><div class="panel-title"><i class="bi bi-person-vcard"/><div><strong>Thông tin nhận hàng</strong><small>Người nhận và địa chỉ giao hàng</small></div></div><div class="fields"><label>Họ và tên<input v-model="form.name"/></label><label>Số điện thoại<input v-model="form.phone"/></label><label>Email<input v-model="form.email" type="email"/></label><label>Địa chỉ nhận hàng<textarea v-model="form.address" rows="2"/></label><label>Ghi chú<textarea v-model="form.note" rows="2" placeholder="Không bắt buộc"/></label></div><div class="panel-title mt"><i class="bi bi-receipt"/><div><strong>Hóa đơn VAT</strong><small>Không bắt buộc · hóa đơn thường luôn có</small></div></div><label class="check"><input v-model="form.vat.requested" type="checkbox"/> Tôi cần xuất hóa đơn VAT</label><div v-if="form.vat.requested" class="fields"><label>Tên công ty/đơn vị<input v-model="form.vat.companyName"/></label><label>Mã số thuế<input v-model="form.vat.taxCode"/></label><label>Địa chỉ xuất VAT<input v-model="form.vat.address"/></label><label>Email nhận VAT<input v-model="form.vat.email" type="email"/></label></div></section><aside class="side"><section class="panel"><div class="panel-title"><i class="bi bi-bag-check"/><div><strong>Đơn hàng</strong><small>{{cart.reduce((n,x)=>n+x.quantity,0)}} sản phẩm</small></div></div><div class="items"><article v-for="i in cart" :key="i.id"><img :src="i.image" :alt="i.name"/><div><strong>{{i.name}}</strong><small>{{i.quantity}} × {{formatPrice(i.price)}}</small></div><b>{{formatPrice(i.price*i.quantity)}}</b></article></div><div class="coupon"><div><strong>Mã giảm giá thành viên</strong><small>Mã cuối tuần / Student / Teacher</small></div><div class="coupon-input"><input v-model="coupon" placeholder="Nhập mã" @keyup.enter="applyCoupon"/><button @click="applyCoupon" :disabled="couponLoading">Áp dụng</button></div><p v-if="couponError">{{couponError}}</p><p v-if="couponInfo" class="coupon-ok">{{couponInfo.coupon.code}} · giảm {{couponInfo.coupon.discount}}%</p></div><div class="totals"><div><span>Tạm tính</span><b>{{formatPrice(subtotal)}}</b></div><div v-if="discount"><span>Giảm giá</span><b class="minus">-{{formatPrice(discount)}}</b></div><div><span>Vận chuyển</span><b>{{formatPrice(shipping)}}</b></div><div class="grand"><span>Tổng thanh toán</span><strong>{{formatPrice(total)}}</strong></div></div></section><section class="panel"><div class="panel-title"><i class="bi bi-credit-card"/><div><strong>Thanh toán</strong><small>COD hoặc PayPal Sandbox</small></div></div><label class="payment"><input v-model="form.payment" value="cod" type="radio"/><span><b>Thanh toán khi nhận hàng (COD)</b><small>Thanh toán khi nhận được hàng · phí vận chuyển {{formatPrice(COD)}}</small></span></label><label class="payment"><input v-model="form.payment" value="paypal-sandbox" type="radio"/><span><b>PayPal Sandbox</b><small>Thanh toán thử nghiệm bằng tài khoản PayPal Personal Sandbox.</small></span></label><div v-if="error" class="error">{{error}}</div><div v-if="paypalError" class="error">{{paypalError}}</div><button v-if="form.payment==='cod'" class="place" @click="codSubmit">Đặt hàng · {{formatPrice(total)}}</button><button v-else class="paypal" @click="startPaypal" :disabled="!paypalReady">{{paypalReady?'Thanh toán bằng PayPal':'Đang tải PayPal...'}}</button></section></aside></div></div></main></template>
-<style scoped>.checkout{min-height:100vh;padding:22px 14px 60px;background:#f5f7fb}.wrap{max-width:1180px;margin:auto}.crumb{display:flex;gap:8px;align-items:center;margin-bottom:16px;color:#98a2b3;font-size:.65rem}.crumb a{color:#667085}.head{margin-bottom:18px}.head span{color:#2563eb;font-size:.58rem;font-weight:900;letter-spacing:.14em}.head h1{margin:4px 0;font-size:1.7rem;font-weight:900}.head p{margin:0;color:#667085;font-size:.7rem}.grid{display:grid;grid-template-columns:1.25fr .85fr;gap:16px}.panel{padding:18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;box-shadow:0 7px 25px rgba(16,24,40,.045)}.panel-title{display:flex;align-items:center;gap:10px;margin-bottom:14px}.panel-title>i{display:grid;width:35px;height:35px;place-items:center;border-radius:9px;color:#2563eb;background:#eff6ff}.panel-title strong,.panel-title small{display:block}.panel-title strong{font-size:.78rem}.panel-title small{margin-top:2px;color:#98a2b3;font-size:.58rem}.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fields label{font-size:.62rem;font-weight:800}.fields label:nth-child(3),.fields label:nth-child(4),.fields label:nth-child(5){grid-column:1/-1}.fields input,.fields textarea{display:block;width:100%;margin-top:5px;padding:9px;border:1px solid #dfe5ee;border-radius:9px;outline:0;font-size:.65rem}.mt{margin-top:20px;padding-top:16px;border-top:1px solid #edf0f4}.check{display:flex;gap:7px;align-items:center;color:#475467;font-size:.65rem}.items{display:grid;gap:8px}.items article{display:flex;align-items:center;gap:8px}.items img{width:45px;height:45px;object-fit:cover;border-radius:8px;background:#f8fafc}.items article div{display:grid;flex:1;min-width:0}.items strong{font-size:.63rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.items small{color:#98a2b3;font-size:.57rem}.items b{font-size:.65rem}.coupon{margin:15px 0;padding:12px;border-radius:11px;background:#f8fafc}.coupon strong,.coupon small{display:block}.coupon strong{font-size:.65rem}.coupon small{margin-top:2px;color:#98a2b3;font-size:.55rem}.coupon-input{display:flex;gap:6px;margin-top:8px}.coupon-input input{min-width:0;flex:1;padding:8px;border:1px solid #dfe5ee;border-radius:8px;font-size:.62rem}.coupon-input button{padding:8px 10px;border:0;border-radius:8px;color:#fff;background:#2563eb;font-size:.6rem;font-weight:800}.coupon p{margin:6px 0 0;color:#b42318;font-size:.56rem}.coupon .coupon-ok{color:#15803d}.totals{display:grid;gap:7px;padding-top:12px;border-top:1px solid #edf0f4}.totals div{display:flex;justify-content:space-between;color:#667085;font-size:.62rem}.totals b{color:#344054}.totals .minus{color:#b42318}.totals .grand{margin-top:5px;padding-top:10px;border-top:1px dashed #d0d5dd;color:#101828;font-size:.7rem}.totals .grand strong{color:#dc2626;font-size:1rem}.payment{display:flex;gap:9px;padding:10px;border:1px solid #e4e7ec;border-radius:10px;margin-top:7px;cursor:pointer}.payment input{margin-top:2px}.payment b,.payment small{display:block}.payment b{font-size:.64rem}.payment small{margin-top:2px;color:#98a2b3;font-size:.55rem;line-height:1.4}.place,.paypal{width:100%;margin-top:12px;padding:11px;border:0;border-radius:10px;color:#fff;font-size:.7rem;font-weight:850}.place{background:#2563eb}.paypal{background:#0f172a}.paypal:disabled{opacity:.5}.error{margin-top:10px;padding:8px;border-radius:8px;color:#b42318;background:#fff1f2;font-size:.58rem}.success,.empty{display:flex;align-items:center;justify-content:center;gap:12px;padding:40px;border:1px solid #d1fae5;border-radius:16px;background:#fff;text-align:center}.success>i{color:#16a34a;font-size:30px}.success strong{font-size:.85rem}.success p{margin:3px 0;color:#667085;font-size:.62rem}.empty{display:grid;border-color:#e4e7ec}.empty i{color:#98a2b3;font-size:30px}.empty h2{margin:0;font-size:.9rem}.empty a{font-size:.65rem}@media(max-width:900px){.grid{grid-template-columns:1fr}.side{display:grid;gap:16px}}@media(max-width:550px){.checkout{padding:14px 9px 45px}.fields{grid-template-columns:1fr}.fields label:nth-child(3),.fields label:nth-child(4),.fields label:nth-child(5){grid-column:auto}.panel{padding:14px}}
+
+<template>
+    <Head title="Tiến hành đặt hàng" />
+    <main class="checkout"><div class="wrap"><nav class="crumb"><Link href="/">Trang chủ</Link><i class="bi bi-chevron-right" />Tiến hành đặt hàng</nav><header class="head"><span>TECHSTORE · THANH TOÁN</span><h1>Tiến hành đặt hàng</h1><p>{{ buyNow ? 'Mua ngay một sản phẩm · số lượng theo lựa chọn.' : 'Xác nhận thông tin, mã ưu đãi và phương thức thanh toán.' }}</p></header>
+    <div v-if="submitted" class="success"><i class="bi bi-check-circle-fill" /><div><strong>Đặt hàng thành công</strong><p>Đơn hàng đã được tạo. TechStore sẽ gửi Email xác nhận.</p></div></div>
+    <div v-else-if="!cart.length" class="empty"><i class="bi bi-cart-x" /><h2>Không có sản phẩm để đặt hàng</h2><Link href="/products" class="btn btn-primary">Khám phá sản phẩm</Link></div>
+    <div v-else class="grid"><section class="panel"><div class="panel-title"><i class="bi bi-person-vcard" /><div><strong>Thông tin nhận hàng</strong><small>Người nhận và địa chỉ giao hàng</small></div></div><div class="fields"><label>Họ và tên<input v-model="form.name" /></label><label>Số điện thoại<input v-model="form.phone" /></label><label>Email<input v-model="form.email" type="email" /></label><label>Địa chỉ nhận hàng<textarea v-model="form.address" rows="2" /></label><label>Ghi chú<textarea v-model="form.note" rows="2" placeholder="Không bắt buộc" /></label></div><div class="panel-title mt"><i class="bi bi-receipt" /><div><strong>Hóa đơn VAT</strong><small>Không bắt buộc · hóa đơn thường luôn có</small></div></div><label class="check"><input v-model="form.vat.requested" type="checkbox" /> Tôi cần xuất hóa đơn VAT</label><div v-if="form.vat.requested" class="fields"><label>Tên công ty/đơn vị<input v-model="form.vat.companyName" /></label><label>Mã số thuế<input v-model="form.vat.taxCode" /></label><label>Địa chỉ xuất VAT<input v-model="form.vat.address" /></label><label>Email nhận VAT<input v-model="form.vat.email" type="email" /></label></div></section>
+    <aside class="side"><section class="panel"><div class="panel-title"><i class="bi bi-bag-check" /><div><strong>Đơn hàng</strong><small>{{ cart.reduce((n, item) => n + item.quantity, 0) }} sản phẩm</small></div></div><div class="items"><article v-for="item in cart" :key="item.id"><img :src="item.image" :alt="item.name" /><div><strong>{{ item.name }}</strong><small>{{ item.quantity }} × {{ formatPrice(item.price) }}</small></div><b>{{ formatPrice(item.price * item.quantity) }}</b></article></div><div class="coupon"><strong>Mã giảm giá thành viên</strong><small>Mã cuối tuần / Student / Teacher</small><div class="coupon-input"><input v-model="coupon" placeholder="Nhập mã" @keyup.enter="applyCoupon" /><button :disabled="couponLoading" @click="applyCoupon">Áp dụng</button></div><p v-if="couponError">{{ couponError }}</p><p v-if="couponInfo" class="coupon-ok">{{ couponInfo.coupon?.code ?? coupon }} · đã áp dụng</p></div><div class="totals"><div><span>Tạm tính</span><b>{{ formatPrice(subtotal) }}</b></div><div v-if="discount"><span>Giảm giá</span><b class="minus">-{{ formatPrice(discount) }}</b></div><div><span>Vận chuyển</span><b>{{ formatPrice(shipping) }}</b></div><div class="grand"><span>Tổng thanh toán</span><strong>{{ formatPrice(total) }}</strong></div></div></section>
+    <section class="panel"><div class="panel-title"><i class="bi bi-credit-card" /><div><strong>Thanh toán</strong><small>COD hoặc PayPal Sandbox</small></div></div><label class="payment"><input v-model="form.payment" value="cod" type="radio" /><span><b>Thanh toán khi nhận hàng (COD)</b><small>Thanh toán khi nhận được hàng · phí vận chuyển {{ formatPrice(COD) }}</small></span></label><label class="payment"><input v-model="form.payment" value="paypal-sandbox" type="radio" /><span><b>PayPal Sandbox</b><small>Thanh toán thử nghiệm bằng tài khoản PayPal Personal Sandbox.</small></span></label><div v-if="error" class="error">{{ error }}</div><div v-if="paypalError" class="error">{{ paypalError }}</div><button v-if="form.payment === 'cod'" class="place" @click="codSubmit">Đặt hàng · {{ formatPrice(total) }}</button><button v-else class="paypal" :disabled="!paypalReady" @click="startPaypal">{{ paypalReady ? 'Thanh toán bằng PayPal' : 'Đang tải PayPal...' }}</button></section></aside></div></div></main>
+</template>
+
+<style scoped>
+.checkout{min-height:100vh;padding:22px 14px 60px;background:#f5f7fb}.wrap{max-width:1180px;margin:auto}.crumb{display:flex;gap:8px;align-items:center;margin-bottom:16px;color:#98a2b3;font-size:.65rem}.crumb a{color:#667085}.head{margin-bottom:18px}.head span{color:#2563eb;font-size:.58rem;font-weight:900;letter-spacing:.14em}.head h1{margin:4px 0;font-size:1.7rem;font-weight:900}.head p{margin:0;color:#667085;font-size:.7rem}.grid{display:grid;grid-template-columns:1.25fr .85fr;gap:16px}.panel{padding:18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;box-shadow:0 7px 25px rgba(16,24,40,.045)}.panel-title{display:flex;align-items:center;gap:10px;margin-bottom:14px}.panel-title>i{display:grid;width:35px;height:35px;place-items:center;border-radius:9px;color:#2563eb;background:#eff6ff}.panel-title strong,.panel-title small{display:block}.panel-title strong{font-size:.78rem}.panel-title small{margin-top:2px;color:#98a2b3;font-size:.58rem}.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fields label{font-size:.62rem;font-weight:800}.fields label:nth-child(n+3){grid-column:1/-1}.fields input,.fields textarea{display:block;width:100%;margin-top:5px;padding:9px;border:1px solid #dfe5ee;border-radius:9px;outline:0;font-size:.65rem}.mt{margin-top:20px;padding-top:16px;border-top:1px solid #edf0f4}.check{display:flex;gap:7px;align-items:center;color:#475467;font-size:.65rem}.items{display:grid;gap:8px}.items article{display:flex;align-items:center;gap:8px}.items img{width:45px;height:45px;object-fit:cover;border-radius:8px;background:#f8fafc}.items article div{display:grid;flex:1;min-width:0}.items strong{font-size:.63rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.items small{color:#98a2b3;font-size:.57rem}.items b{font-size:.65rem}.coupon{margin:15px 0;padding:12px;border-radius:11px;background:#f8fafc}.coupon strong,.coupon small{display:block}.coupon strong{font-size:.65rem}.coupon small{margin-top:2px;color:#98a2b3;font-size:.55rem}.coupon-input{display:flex;gap:6px;margin-top:8px}.coupon-input input{min-width:0;flex:1;padding:8px;border:1px solid #dfe5ee;border-radius:8px;font-size:.62rem}.coupon-input button{padding:8px 10px;border:0;border-radius:8px;color:#fff;background:#2563eb;font-size:.6rem;font-weight:800}.coupon p{margin:6px 0 0;color:#b42318;font-size:.56rem}.coupon .coupon-ok{color:#15803d}.totals{display:grid;gap:7px;padding-top:12px;border-top:1px solid #edf0f4}.totals div{display:flex;justify-content:space-between;color:#667085;font-size:.62rem}.totals b{color:#344054}.totals .minus{color:#b42318}.totals .grand{margin-top:5px;padding-top:10px;border-top:1px dashed #d0d5dd;color:#101828;font-size:.7rem}.totals .grand strong{color:#dc2626;font-size:1rem}.payment{display:flex;gap:9px;padding:10px;border:1px solid #e4e7ec;border-radius:10px;margin-top:7px;cursor:pointer}.payment input{margin-top:2px}.payment b,.payment small{display:block}.payment b{font-size:.64rem}.payment small{margin-top:2px;color:#98a2b3;font-size:.55rem;line-height:1.4}.place,.paypal{width:100%;margin-top:12px;padding:11px;border:0;border-radius:10px;color:#fff;font-size:.7rem;font-weight:850}.place{background:#2563eb}.paypal{background:#0f172a}.paypal:disabled{opacity:.5}.error{margin-top:10px;padding:8px;border-radius:8px;color:#b42318;background:#fff1f2;font-size:.58rem}.success,.empty{display:flex;align-items:center;justify-content:center;gap:12px;padding:40px;border:1px solid #d1fae5;border-radius:16px;background:#fff;text-align:center}.success>i{color:#16a34a;font-size:30px}.success strong{font-size:.85rem}.success p{margin:3px 0;color:#667085;font-size:.62rem}.empty{display:grid;border-color:#e4e7ec}.empty i{color:#98a2b3;font-size:30px}.empty h2{margin:0;font-size:.9rem}.empty a{font-size:.65rem}@media(max-width:900px){.grid{grid-template-columns:1fr}.side{display:grid;gap:16px}}@media(max-width:550px){.checkout{padding:14px 9px 45px}.fields{grid-template-columns:1fr}.fields label:nth-child(n+3){grid-column:auto}.panel{padding:14px}}
 </style>

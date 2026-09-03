@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminProduct;
 use App\Models\Order;
 use App\Models\ReturnRequest;
 use Illuminate\Http\JsonResponse;
@@ -94,15 +95,35 @@ class ReturnRequestController extends Controller
         abort_unless($returnRequest->status === 'inspecting', 422, 'Đơn hàng chưa ở trạng thái đang kiểm tra hàng.');
 
         DB::transaction(function () use ($returnRequest): void {
+            $returnRequest->load('order.items');
+            $order = $returnRequest->order;
+
+            if ($order) {
+                foreach ($order->items as $item) {
+                    if (!$item->product_id) {
+                        continue;
+                    }
+
+                    $product = AdminProduct::query()->lockForUpdate()->find($item->product_id);
+                    if (!$product) {
+                        continue;
+                    }
+
+                    $quantity = (int) $item->quantity;
+                    $product->increment('stock', $quantity);
+                    $product->decrement('sold_count', min((int) $product->sold_count, $quantity));
+                }
+            }
+
             $returnRequest->update([
                 'status' => 'refunded',
                 'refund_status' => 'completed',
                 'refunded_at' => now(),
             ]);
-            $returnRequest->order?->update(['status' => 'Đã hoàn tiền']);
+            $order?->update(['status' => 'Đã hoàn tiền']);
         });
 
-        return back()->with('success', 'Đã phê duyệt hoàn tiền cho đơn hàng.');
+        return back()->with('success', 'Đã phê duyệt hoàn tiền và hoàn số lượng hàng về kho.');
     }
 
     public function reject(Request $request, ReturnRequest $returnRequest): RedirectResponse

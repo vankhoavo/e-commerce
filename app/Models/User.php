@@ -1,46 +1,5 @@
 <?php
-
 namespace App\Models;
-
-use App\Enums\UserRole;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\Contracts\PasskeyUser;
-use Laravel\Fortify\PasskeyAuthenticatable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
-
-#[Fillable(['name','email','phone','address','address_province','address_ward','address_detail','birth_date','password','role','is_active','avatar','google_id','admin_permissions','member_type','backoffice_title'])]
-#[Hidden(['password','two_factor_secret','two_factor_recovery_codes','remember_token'])]
-class User extends Authenticatable implements PasskeyUser
-{
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
-
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at'=>'datetime','password'=>'hashed','role'=>UserRole::class,'is_active'=>'boolean','admin_permissions'=>'array','two_factor_confirmed_at'=>'datetime',
-        ];
-    }
-
-    public function isAdmin(): bool { return $this->is_active && $this->role === UserRole::ADMIN; }
-    public function isBackOffice(): bool { return $this->is_active && $this->role?->isBackOffice(); }
-    public function isStaff(): bool { return $this->isBackOffice(); }
-
-    public function hasAdminPermission(string $permission): bool
-    {
-        if (! $this->isBackOffice()) return false;
-        if ($this->role === UserRole::ADMIN && $this->name === 'admin') return true;
-        if ($this->role === UserRole::ADMIN) return in_array($permission, $this->admin_permissions ?? [], true);
-        return match ($this->role) {
-            UserRole::SALES => in_array($permission, ['dashboard','orders','coupons','customers'], true),
-            UserRole::TECHNICAL => in_array($permission, ['dashboard','products','inventory','orders'], true),
-            UserRole::CUSTOMER_SERVICE => in_array($permission, ['dashboard','orders','customers'], true),
-            default => false,
-        };
-    }
-}
+use App\Enums\UserRole;use Database\Factories\UserFactory;use Illuminate\Database\Eloquent\Attributes\Fillable;use Illuminate\Database\Eloquent\Attributes\Hidden;use Illuminate\Database\Eloquent\Factories\HasFactory;use Illuminate\Foundation\Auth\User as Authenticatable;use Illuminate\Notifications\Notifiable;use Laravel\Fortify\Contracts\PasskeyUser;use Laravel\Fortify\PasskeyAuthenticatable;use Laravel\Fortify\TwoFactorAuthenticatable;
+#[Fillable(['name','email','phone','address','address_province','address_ward','address_detail','birth_date','password','role','is_active','avatar','google_id','admin_permissions','member_type','backoffice_title'])]#[Hidden(['password','two_factor_secret','two_factor_recovery_codes','remember_token'])]
+class User extends Authenticatable implements PasskeyUser{use HasFactory,Notifiable,PasskeyAuthenticatable,TwoFactorAuthenticatable;protected function casts():array{return['email_verified_at'=>'datetime','password'=>'hashed','role'=>UserRole::class,'is_active'=>'boolean','admin_permissions'=>'array','two_factor_confirmed_at'=>'datetime'];}public function isAdmin():bool{return $this->is_active&&$this->role===UserRole::ADMIN;}public function isBackOffice():bool{return $this->is_active&&$this->role?->isBackOffice();}public function isStaff():bool{return $this->isBackOffice();}public function hasAdminPermission(string$permission):bool{if(!$this->isBackOffice())return false;if($this->role===UserRole::ADMIN&&$this->name==='admin')return true;if($this->role===UserRole::ADMIN)return in_array($permission,$this->admin_permissions??[],true);return match($this->role){UserRole::SALES=>in_array($permission,['dashboard','orders','coupons','customers'],true),UserRole::TECHNICAL=>in_array($permission,['dashboard','products','inventory','orders'],true),UserRole::CUSTOMER_SERVICE=>in_array($permission,['dashboard','orders','customers'],true),UserRole::STAFF=>in_array($permission,['dashboard','orders'],true),default=>false};}}

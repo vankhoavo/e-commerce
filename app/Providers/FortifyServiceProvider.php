@@ -46,46 +46,33 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::authenticateUsing(function (Request $request): ?User {
-            $identifier = Str::lower(trim($request->string('email')->toString()));
-            $password = $request->string('password')->toString();
+            $identifier=Str::lower(trim($request->string('email')->toString()));
+            $password=$request->string('password')->toString();
 
-            if (in_array($identifier, ['admin', 'admin@techstore.local'], true)) {
-                $user = User::query()
-                    ->where('role', UserRole::ADMIN->value)
-                    ->where('is_active', true)
-                    ->where(function ($query): void {
-                        $query->whereRaw('LOWER(name) = ?', ['admin'])
-                            ->orWhereRaw('LOWER(email) = ?', ['admin@techstore.local']);
-                    })
-                    ->first();
+            if ($identifier==='admin') {
+                $user=User::query()->where('role',UserRole::ADMIN->value)->where('is_active',true)->whereRaw('LOWER(name) = ?',['admin'])->first();
             } else {
-                $user = User::query()
-                    ->whereRaw('LOWER(email) = ?', [$identifier])
-                    ->where('role', '!=', UserRole::ADMIN->value)
-                    ->first();
+                $user=User::query()->whereRaw('LOWER(email) = ?',[$identifier])->first();
             }
 
-            if (! $user || ! $user->is_active) {
-                return null;
-            }
-
-            return Hash::check($password, $user->password) ? $user : null;
+            if (!$user || !$user->is_active) return null;
+            return Hash::check($password,$user->password) ? $user : null;
         });
     }
 
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', ['status' => $request->session()->get('status')]));
-        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/VerifyEmail', ['status' => $request->session()->get('status')]));
-        Fortify::registerView(fn () => Inertia::render('auth/Register'));
-        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
-        Fortify::confirmPasswordView(fn () => Inertia::render('auth/ConfirmPassword'));
+        Fortify::loginView(fn (Request $request)=>Inertia::render('auth/Login',['status'=>$request->session()->get('status')]));
+        Fortify::verifyEmailView(fn (Request $request)=>Inertia::render('auth/VerifyEmail',['status'=>$request->session()->get('status')]));
+        Fortify::registerView(fn()=>Inertia::render('auth/Register'));
+        Fortify::twoFactorChallengeView(fn()=>Inertia::render('auth/TwoFactorChallenge'));
+        Fortify::confirmPasswordView(fn()=>Inertia::render('auth/ConfirmPassword'));
     }
 
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')));
-        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip())));
-        RateLimiter::for('passkeys', fn (Request $request) => Limit::perMinute(10)->by(($request->input('credential.id') ?: $request->session()->getId()).'|'.$request->ip()));
+        RateLimiter::for('two-factor',fn(Request $request)=>Limit::perMinute(5)->by($request->session()->get('login.id')));
+        RateLimiter::for('login',fn(Request $request)=>Limit::perMinute(5)->by(Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip())));
+        RateLimiter::for('passkeys',fn(Request $request)=>Limit::perMinute(10)->by(($request->input('credential.id')?:$request->session()->getId()).'|'.$request->ip()));
     }
 }

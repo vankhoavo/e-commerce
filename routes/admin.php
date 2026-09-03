@@ -25,10 +25,13 @@ Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(func
     Route::patch('/users/{user}',[AdminController::class,'userUpdate'])->middleware('admin.permission:customers')->name('users.update');
     Route::delete('/users/{user}',[AdminController::class,'userDelete'])->middleware('admin.permission:customers')->name('users.delete');
     Route::get('/orders',[AdminController::class,'orders'])->middleware('admin.permission:orders')->name('orders');
+    Route::get('/orders/deletion-requests',[AdminController::class,'orderDeletionRequests'])->middleware('admin.permission:orders')->name('orders.deletion-requests');
     Route::delete('/orders',[AdminController::class,'ordersDeleteAll'])->middleware('admin.permission:orders')->middleware('throttle:10,1')->name('orders.delete-all');
     Route::patch('/orders/{order}/approve',[AdminController::class,'orderApprove'])->middleware('admin.permission:orders')->name('orders.approve');
     Route::patch('/orders/{order}',[AdminController::class,'orderUpdate'])->middleware('admin.permission:orders')->name('orders.update');
     Route::delete('/orders/{order}',[AdminController::class,'orderDelete'])->middleware('admin.permission:orders')->middleware('throttle:10,1')->name('orders.delete');
+    Route::patch('/orders/deletion-requests/{deletionRequest}/approve',[AdminController::class,'approveOrderDeletion'])->middleware('admin.permission:orders')->name('orders.deletion-requests.approve');
+    Route::patch('/orders/deletion-requests/{deletionRequest}/reject',[AdminController::class,'rejectOrderDeletion'])->middleware('admin.permission:orders')->name('orders.deletion-requests.reject');
     Route::get('/administrators',[AdminController::class,'administrators'])->middleware('admin.permission:administrators')->name('administrators');
     Route::post('/administrators',[AdminController::class,'administratorStore'])->middleware('admin.permission:administrators')->name('administrators.store');
     Route::patch('/administrators/{user}',[AdminController::class,'administratorUpdate'])->middleware('admin.permission:administrators')->name('administrators.update');

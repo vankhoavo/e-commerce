@@ -1,0 +1,9 @@
+/* Keep the customer-facing application inside the viewport. */
+html,body,#app{max-width:100%;min-width:0}
+html,body{overflow-x:hidden}
+.client-shell{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+.client-shell>main{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+.client-shell .shop-navbar{width:100%;max-width:100%;min-width:0}
+.client-shell .shop-navbar>.container{min-width:0;max-width:100%}
+.client-shell .catalog{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+.client-shell .catalog .layout,.client-shell .catalog .results,.client-shell .catalog .grid{min-width:0;max-width:100%}

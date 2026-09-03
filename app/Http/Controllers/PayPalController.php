@@ -35,6 +35,7 @@ class PayPalController extends Controller
         $description = is_array($details) ? (string) data_get($details, '0.description', '') : '';
 
         $parts = array_values(array_filter([$name, $issue, $message, $description]));
+
         return $parts ? implode(' — ', array_unique($parts)) : $fallback;
     }
 
@@ -72,6 +73,7 @@ class PayPalController extends Controller
                 ]);
         } catch (Throwable $e) {
             report($e);
+
             return response()->json(['message' => 'Không thể kết nối PayPal Sandbox từ máy chủ TechStore.'], 502);
         }
 
@@ -96,10 +98,15 @@ class PayPalController extends Controller
         try {
             $response = Http::withToken($this->accessToken())
                 ->acceptJson()
-                ->withHeaders(['PayPal-Request-Id' => (string) Str::uuid()])
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'PayPal-Request-Id' => (string) Str::uuid(),
+                ])
+                ->withBody('{}', 'application/json')
                 ->post($this->baseUrl().'/v2/checkout/orders/'.$orderId.'/capture');
         } catch (Throwable $e) {
             report($e);
+
             return response()->json(['message' => 'Không thể kết nối PayPal Sandbox từ máy chủ TechStore.'], 502);
         }
 

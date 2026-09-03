@@ -63,10 +63,10 @@ function add(p:P) {
 
 <template>
   <Head title="Khám phá sản phẩm" />
-  <main class="catalog">
-    <div class="crumb"><Link href="/">Trang chủ</Link><i class="bi bi-chevron-right"></i>Khám phá sản phẩm</div>
+  <main class="catalog-page">
+    <div class="catalog-breadcrumb"><Link href="/">Trang chủ</Link><i class="bi bi-chevron-right"></i>Khám phá sản phẩm</div>
 
-    <header class="hero">
+    <header class="catalog-hero">
       <div>
         <span>TECHSTORE · CỬA HÀNG CÔNG NGHỆ</span>
         <h1>Khám phá sản phẩm</h1>
@@ -75,11 +75,11 @@ function add(p:P) {
       <strong>{{ filtered.length }} sản phẩm</strong>
     </header>
 
-    <div class="layout">
-      <aside class="filters">
-        <div class="filter-head"><h3>Bộ lọc chi tiết</h3><button @click="reset">Xóa lọc</button></div>
+    <div class="catalog-layout">
+      <aside class="catalog-filters">
+        <div class="catalog-filter-head"><h3>Bộ lọc chi tiết</h3><button @click="reset">Xóa lọc</button></div>
         <label>Tìm kiếm / mã sản phẩm</label>
-        <div class="search"><i class="bi bi-search"></i><input v-model="q" placeholder="Tên, SKU, mã sản phẩm..." /></div>
+        <div class="catalog-search"><i class="bi bi-search"></i><input v-model="q" placeholder="Tên, SKU, mã sản phẩm..." /></div>
         <label>Thương hiệu</label>
         <select v-model="brand"><option value="">Tất cả thương hiệu</option><option v-for="b in filters.brands" :key="b" :value="b">{{ b }} · {{ count('brand', b) }} dòng</option></select>
         <label>Loại sản phẩm</label>
@@ -87,41 +87,47 @@ function add(p:P) {
         <label>Dòng sản phẩm / Series</label>
         <select v-model="line"><option value="">Tất cả dòng</option><option v-for="l in filters.lines" :key="l" :value="l">{{ l }} · {{ count('productLine', l) }} dòng</option></select>
         <label>Khoảng giá</label>
-        <div class="price"><input v-model="min" inputmode="numeric" placeholder="Từ" /><input v-model="max" inputmode="numeric" placeholder="Đến" /></div>
-        <div class="filter-note"><i class="bi bi-upc-scan"></i><span>Tìm bằng SKU/mã sản phẩm phù hợp cho khách hàng và bộ phận bán hàng.</span></div>
+        <div class="catalog-price-range"><input v-model="min" inputmode="numeric" placeholder="Từ" /><input v-model="max" inputmode="numeric" placeholder="Đến" /></div>
+        <div class="catalog-filter-note"><i class="bi bi-upc-scan"></i><span>Tìm bằng SKU/mã sản phẩm phù hợp cho khách hàng và bộ phận bán hàng.</span></div>
       </aside>
 
-      <section class="results">
-        <div class="toolbar"><span><strong>{{ filtered.length }}</strong> kết quả</span><select v-model="sort"><option value="featured">Nổi bật</option><option value="rating">Đánh giá cao</option><option value="low">Giá thấp → cao</option><option value="high">Giá cao → thấp</option></select></div>
+      <section class="catalog-results">
+        <div class="catalog-toolbar"><span><strong>{{ filtered.length }}</strong> kết quả</span><select v-model="sort"><option value="featured">Nổi bật</option><option value="rating">Đánh giá cao</option><option value="low">Giá thấp → cao</option><option value="high">Giá cao → thấp</option></select></div>
 
-        <div v-if="shown.length" class="grid">
-          <article v-for="p in shown" :key="p.id" class="card">
-            <div class="image"><img :src="p.image || ''" :alt="p.name" /><span v-if="p.badge">{{ p.badge }}</span></div>
-            <div class="body">
+        <div v-if="shown.length" class="catalog-grid">
+          <article v-for="p in shown" :key="p.id" class="catalog-card">
+            <div class="catalog-image"><img :src="p.image || ''" :alt="p.name" /><span v-if="p.badge">{{ p.badge }}</span></div>
+            <div class="catalog-card-body">
               <small>{{ p.brand }} · {{ p.productLine || p.productType || p.category }}</small>
               <h2>{{ p.name }}</h2>
-              <div class="meta"><span><i class="bi bi-star-fill"></i> {{ p.rating }}</span><span>Đã bán {{ p.sold }}</span></div>
-              <strong class="price">{{ fmt(p.price) }}</strong><del v-if="p.oldPrice">{{ fmt(p.oldPrice) }}</del>
-              <div class="actions"><Link :href="`/products/${p.slug}`">Xem chi tiết <i class="bi bi-arrow-right"></i></Link><button @click="add(p)" :disabled="p.stock < 1"><i class="bi bi-cart-plus"></i></button></div>
+              <div class="catalog-meta"><span><i class="bi bi-star-fill"></i> {{ p.rating }}</span><span>Đã bán {{ p.sold }}</span></div>
+              <strong class="catalog-price">{{ fmt(p.price) }}</strong><del v-if="p.oldPrice">{{ fmt(p.oldPrice) }}</del>
+              <div class="catalog-actions"><Link :href="`/products/${p.slug}`">Xem chi tiết <i class="bi bi-arrow-right"></i></Link><button @click="add(p)" :disabled="p.stock < 1"><i class="bi bi-cart-plus"></i></button></div>
             </div>
           </article>
         </div>
 
-        <div v-else class="empty"><i class="bi bi-search"></i><h3>Không tìm thấy sản phẩm</h3><button @click="reset">Xóa bộ lọc</button></div>
-        <nav v-if="pages > 1" class="pagination"><button :disabled="current === 1" @click="current--">‹</button><button v-for="n in pages" :key="n" :class="{active:current === n}" @click="current = n">{{ n }}</button><button :disabled="current === pages" @click="current++">›</button></nav>
+        <div v-else class="catalog-empty"><i class="bi bi-search"></i><h3>Không tìm thấy sản phẩm</h3><button @click="reset">Xóa bộ lọc</button></div>
+        <nav v-if="pages > 1" class="catalog-pagination"><button :disabled="current === 1" @click="current--">‹</button><button v-for="n in pages" :key="n" :class="{active:current === n}" @click="current = n">{{ n }}</button><button :disabled="current === pages" @click="current++">›</button></nav>
       </section>
     </div>
   </main>
 </template>
 
 <style scoped>
-.catalog{width:100%;max-width:100%;box-sizing:border-box;min-height:100vh;padding:24px 20px 65px;background:#f7f9fc;overflow-x:hidden}
-.crumb{display:flex;gap:8px;align-items:center;margin-bottom:18px;color:#98a2b3;font-size:.68rem}.crumb a{color:#667085}
-.hero{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;width:100%;padding:22px;margin-bottom:18px;border:1px solid #e4e7ec;border-radius:18px;background:#fff;box-sizing:border-box;min-width:0}.hero>div{min-width:0}.hero h1{margin:4px 0;font-size:1.7rem;font-weight:900}.hero p{margin:0;color:#667085;font-size:.7rem}.hero>strong{flex:0 0 auto;padding:8px 11px;border-radius:9px;color:#2563eb;background:#eff6ff;font-size:.65rem}
-.layout{display:flex;align-items:flex-start;gap:18px;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.filters{position:sticky;top:15px;align-self:flex-start;flex:0 0 260px;width:260px;min-width:0;box-sizing:border-box;padding:16px;border:1px solid #e4e7ec;border-radius:16px;background:#fff}.filter-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.filter-head h3{margin:0;font-size:.9rem}.filter-head button{border:0;background:none;color:#2563eb;font-size:.6rem;font-weight:800}.filters label{display:block;margin:12px 0 5px;color:#667085;font-size:.6rem;font-weight:850}.search,.filters select,.price input{width:100%;box-sizing:border-box;border:1px solid #dfe5ee;border-radius:9px;background:#fff}.search{display:flex;align-items:center;padding:0 9px}.search i{color:#98a2b3}.search input,.filters select{height:38px;border:0;outline:0;font-size:.63rem}.search input{width:100%;min-width:0;padding:0 6px}.price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}.price input{height:38px;padding:0 8px;outline:0;font-size:.62rem}.filter-note{display:flex;gap:7px;margin-top:14px;padding:9px;border-radius:9px;color:#667085;background:#f8fafc;font-size:.58rem;line-height:1.45;min-width:0}.filter-note span{min-width:0}.filter-note i{color:#2563eb}
-.results{flex:1 1 0;width:0;min-width:0;max-width:100%;overflow:hidden}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0;margin-bottom:12px;color:#667085;font-size:.68rem}.toolbar span{min-width:0}.toolbar select{max-width:100%;padding:8px;border:1px solid #dfe5ee;border-radius:9px;background:#fff;font-size:.63rem}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%;min-width:0;max-width:100%}.card{min-width:0;max-width:100%;overflow:hidden;border:1px solid #e4e7ec;border-radius:16px;background:#fff;box-shadow:0 7px 23px rgba(16,24,40,.04)}.image{position:relative;min-width:0;max-width:100%;aspect-ratio:1.05;background:#f5f7fa;overflow:hidden}.image img{display:block;width:100%;height:100%;min-width:0;max-width:100%;object-fit:cover}.image span{position:absolute;top:9px;left:9px;padding:5px 7px;border-radius:7px;color:#fff;background:#101828;font-size:.57rem;font-weight:800}.body{min-width:0;padding:12px}.body>small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#98a2b3;font-size:.56rem}.body h2{height:42px;overflow:hidden;margin:5px 0;font-size:.75rem;line-height:1.4}.meta{display:flex;justify-content:space-between;gap:6px;color:#98a2b3;font-size:.57rem}.meta span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.meta i{color:#f59e0b}.body>.price{display:inline-block;max-width:100%;margin-top:7px;color:#dc2626;font-size:.86rem}.body del{margin-left:5px;color:#98a2b3;font-size:.57rem}.actions{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:6px;margin-top:10px}.actions a,.actions button{min-width:0;height:35px;display:grid;place-items:center;overflow:hidden;border:1px solid #bfdbfe;border-radius:8px;background:#fff;color:#2563eb;text-decoration:none;font-size:.6rem;font-weight:800}.actions a{white-space:nowrap;text-overflow:ellipsis}.actions button{background:#2563eb;color:#fff}.actions button:disabled{opacity:.45}.empty{padding:60px;text-align:center;border:1px dashed #d0d5dd;border-radius:15px;color:#98a2b3}.empty i{font-size:28px}.empty button{border:0;color:#2563eb;background:none;font-size:.65rem;font-weight:800}.pagination{display:flex;justify-content:center;gap:5px;margin-top:24px;flex-wrap:wrap}.pagination button{min-width:34px;height:34px;border:1px solid #dfe5ee;border-radius:8px;background:#fff;font-size:.65rem}.pagination button.active{border-color:#2563eb;color:#fff;background:#2563eb}
-@media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:850px){.layout{display:flex;flex-direction:column}.filters{position:static;width:100%;flex-basis:auto}.results{width:100%;flex-basis:auto}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:550px){.catalog{padding:15px 10px 45px}.hero{padding:18px}.hero>strong{display:none}.grid{grid-template-columns:1fr}.toolbar{align-items:flex-start;flex-direction:column;gap:8px}.toolbar select{width:100%}}
+.catalog-page{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;min-height:100vh;padding:24px 20px 65px;background:#f7f9fc;overflow-x:clip}
+.catalog-page,.catalog-page *{box-sizing:border-box}
+.catalog-breadcrumb{display:flex;gap:8px;align-items:center;min-width:0;margin-bottom:18px;color:#98a2b3;font-size:.68rem}.catalog-breadcrumb a{color:#667085}
+.catalog-hero{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;width:100%;max-width:100%;min-width:0;padding:22px;margin-bottom:18px;border:1px solid #e4e7ec;border-radius:18px;background:#fff}.catalog-hero>div{min-width:0;max-width:100%}.catalog-hero h1{margin:4px 0;font-size:1.7rem;font-weight:900}.catalog-hero p{margin:0;color:#667085;font-size:.7rem}.catalog-hero>strong{flex:0 0 auto;padding:8px 11px;border-radius:9px;color:#2563eb;background:#eff6ff;font-size:.65rem}
+.catalog-layout{display:flex!important;flex-direction:row;align-items:flex-start;gap:18px;width:100%!important;max-width:100%!important;min-width:0!important;margin:0;padding:0}
+.catalog-filters{position:sticky;top:15px;align-self:flex-start;flex:0 0 260px!important;width:260px!important;max-width:260px!important;min-width:260px!important;padding:16px;border:1px solid #e4e7ec;border-radius:16px;background:#fff}
+.catalog-filter-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:13px}.catalog-filter-head h3{margin:0;font-size:.9rem}.catalog-filter-head button{border:0;background:none;color:#2563eb;font-size:.6rem;font-weight:800}
+.catalog-filters label{display:block;margin:12px 0 5px;color:#667085;font-size:.6rem;font-weight:850}.catalog-search,.catalog-filters select,.catalog-price-range input{width:100%;max-width:100%;box-sizing:border-box;border:1px solid #dfe5ee;border-radius:9px;background:#fff}.catalog-search{display:flex;align-items:center;min-width:0;padding:0 9px}.catalog-search i{color:#98a2b3}.catalog-search input,.catalog-filters select{height:38px;border:0;outline:0;font-size:.63rem}.catalog-search input{width:100%;min-width:0;padding:0 6px}.catalog-price-range{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;width:100%;max-width:100%}.catalog-price-range input{height:38px;min-width:0;padding:0 8px;outline:0;font-size:.62rem}.catalog-filter-note{display:flex;gap:7px;margin-top:14px;padding:9px;border-radius:9px;color:#667085;background:#f8fafc;font-size:.58rem;line-height:1.45;min-width:0;max-width:100%}.catalog-filter-note span{min-width:0;overflow-wrap:anywhere}.catalog-filter-note i{color:#2563eb;flex:0 0 auto}
+.catalog-results{flex:1 1 0!important;width:auto!important;max-width:none!important;min-width:0!important;overflow:hidden!important}.catalog-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0;margin-bottom:12px;color:#667085;font-size:.68rem}.catalog-toolbar span{min-width:0}.catalog-toolbar select{width:auto;max-width:100%;min-width:0;padding:8px;border:1px solid #dfe5ee;border-radius:9px;background:#fff;font-size:.63rem}
+.catalog-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0;padding:0}.catalog-card{display:flex;flex-direction:column;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;border:1px solid #e4e7ec;border-radius:16px;background:#fff;box-shadow:0 7px 23px rgba(16,24,40,.04)}.catalog-image{position:relative;display:block;width:100%;max-width:100%;min-width:0;aspect-ratio:1.05;background:#f5f7fa;overflow:hidden}.catalog-image img{display:block;width:100%;height:100%;min-width:0;max-width:100%;object-fit:cover}.catalog-image span{position:absolute;top:9px;left:9px;max-width:calc(100% - 18px);padding:5px 7px;border-radius:7px;color:#fff;background:#101828;font-size:.57rem;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.catalog-card-body{display:block;width:100%;max-width:100%;min-width:0;padding:12px;overflow:hidden}.catalog-card-body>small{display:block;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#98a2b3;font-size:.56rem}.catalog-card-body h2{height:42px;overflow:hidden;margin:5px 0;font-size:.75rem;line-height:1.4;overflow-wrap:anywhere}.catalog-meta{display:flex;justify-content:space-between;gap:6px;width:100%;min-width:0;color:#98a2b3;font-size:.57rem}.catalog-meta span{min-width:0;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.catalog-meta i{color:#f59e0b}.catalog-price{display:inline-block;max-width:100%;min-width:0;margin-top:7px;color:#dc2626;font-size:.86rem;overflow-wrap:anywhere}.catalog-card-body del{margin-left:5px;color:#98a2b3;font-size:.57rem}.catalog-actions{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:6px;width:100%;max-width:100%;margin-top:10px}.catalog-actions a,.catalog-actions button{min-width:0;width:100%;height:35px;display:grid;place-items:center;overflow:hidden;border:1px solid #bfdbfe;border-radius:8px;background:#fff;color:#2563eb;text-decoration:none;font-size:.6rem;font-weight:800}.catalog-actions a{white-space:nowrap;text-overflow:ellipsis}.catalog-actions button{background:#2563eb;color:#fff}.catalog-actions button:disabled{opacity:.45}
+.catalog-empty{width:100%;max-width:100%;padding:60px;text-align:center;border:1px dashed #d0d5dd;border-radius:15px;color:#98a2b3}.catalog-empty i{font-size:28px}.catalog-empty button{border:0;color:#2563eb;background:none;font-size:.65rem;font-weight:800}.catalog-pagination{display:flex;justify-content:center;gap:5px;margin-top:24px;flex-wrap:wrap}.catalog-pagination button{min-width:34px;height:34px;border:1px solid #dfe5ee;border-radius:8px;background:#fff;font-size:.65rem}.catalog-pagination button.active{border-color:#2563eb;color:#fff;background:#2563eb}
+@media(max-width:1050px){.catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:850px){.catalog-layout{flex-direction:column!important}.catalog-filters{position:static;width:100%!important;max-width:100%!important;min-width:0!important;flex:0 0 auto!important}.catalog-results{width:100%!important;max-width:100%!important;flex:0 0 auto!important}.catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:550px){.catalog-page{padding:15px 10px 45px}.catalog-hero{padding:18px}.catalog-hero>strong{display:none}.catalog-grid{grid-template-columns:1fr!important}.catalog-toolbar{align-items:flex-start;flex-direction:column;gap:8px}.catalog-toolbar select{width:100%}}
 </style>

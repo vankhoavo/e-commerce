@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
+use App\Mail\OrderProcessedMail;
+use App\Mail\VatInvoiceMail;
 use App\Models\AdminProduct;
 use App\Models\Coupon;
 use App\Models\Order;
@@ -12,6 +14,8 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -38,57 +42,51 @@ class AdminController extends Controller
     public function userUpdate(Request $request,User $user):RedirectResponse{abort_unless(in_array($user->role->value,[UserRole::CUSTOMER->value,UserRole::STAFF->value],true),404);$data=$request->validate(['name'=>['required','string','max:255'],'email'=>['required','email','max:255',Rule::unique('users','email')->ignore($user->id)],'phone'=>['nullable','string','max:30'],'is_active'=>['required','boolean']]);$user->update($data);return back()->with('success','Đã cập nhật tài khoản.');}
     public function userDelete(User $user):RedirectResponse{abort_unless(in_array($user->role->value,[UserRole::CUSTOMER->value,UserRole::STAFF->value],true),404);$user->delete();return back()->with('success','Đã xóa tài khoản.');}
     public function orders():Response{return Inertia::render('admin/Orders',['orders'=>Order::query()->with('items')->latest()->paginate(15)->withQueryString()]);}
-    public function orderApprove(Order $order):RedirectResponse{abort_unless($order->status==='Chờ xử lý',422,'Đơn hàng không ở trạng thái chờ duyệt.');DB::transaction(function()use($order):void{$order->load('items');foreach($order->items as $item){if(!$item->product_id)continue;$product=AdminProduct::query()->lockForUpdate()->find($item->product_id);if(!$product)abort(422,'Sản phẩm không còn tồn tại: '.$item->name);if($product->stock<$item->quantity)abort(422,'Tồn kho không đủ cho sản phẩm: '.$product->name);$product->decrement('stock',$item->quantity);$product->increment('sold_count',$item->quantity);} $order->update(['status'=>'Đã duyệt']);});return back()->with('success','Đã duyệt đơn hàng và cập nhật tồn kho.');}
+    public function orderApprove(Order $order):RedirectResponse
+    {
+        abort_unless($order->status==='Chờ xử lý',422,'Đơn hàng không ở trạng thái chờ duyệt.');
+        DB::transaction(function()use($order):void{$order->load('items');foreach($order->items as $item){if(!$item->product_id)continue;$product=AdminProduct::query()->lockForUpdate()->find($item->product_id);if(!$product)abort(422,'Sản phẩm không còn tồn tại: '.$item->name);if($product->stock<$item->quantity)abort(422,'Tồn kho không đủ cho sản phẩm: '.$product->name);$product->decrement('stock',$item->quantity);$product->increment('sold_count',$item->quantity);} $order->update(['status'=>'Đã duyệt']);});
+
+        $order->refresh()->load('user','items');
+        $recipient=$order->customer_email ?: $order->user?->email;
+        if ($recipient) {
+            try {
+                Mail::to($recipient)->send(new OrderProcessedMail($order));
+            } catch (\Throwable $exception) {
+                Log::warning('Không thể gửi Email đơn hàng đã xử lý.', ['order_id'=>$order->id,'recipient'=>$recipient,'error'=>$exception->getMessage()]);
+            }
+        }
+        if ($order->vat_invoice_requested && filled($order->vat_email)) {
+            try {
+                Mail::to($order->vat_email)->send(new VatInvoiceMail($order));
+            } catch (\Throwable $exception) {
+                Log::warning('Không thể gửi Email hóa đơn VAT.', ['order_id'=>$order->id,'recipient'=>$order->vat_email,'error'=>$exception->getMessage()]);
+            }
+        }
+        return back()->with('success',$order->vat_invoice_requested?'Đã duyệt đơn hàng, cập nhật tồn kho và gửi Email xử lý cùng hóa đơn VAT.':'Đã duyệt đơn hàng, cập nhật tồn kho và gửi Email trạng thái xử lý.');
+    }
 
     public function administrators():Response
     {
-        return Inertia::render('admin/Administrators', [
-            'administrators'=>User::query()->where('role',UserRole::ADMIN->value)->latest()->paginate(20)->withQueryString(),
-            'permissions'=>self::adminPermissionDefinitions(),
-        ]);
+        return Inertia::render('admin/Administrators', ['administrators'=>User::query()->where('role',UserRole::ADMIN->value)->latest()->paginate(20)->withQueryString(),'permissions'=>self::adminPermissionDefinitions()]);
     }
-
     public function administratorStore(Request $request):RedirectResponse
     {
         $data=$request->validate(['name'=>['required','string','max:255','regex:/^[^@\\s]+$/','unique:users,name'],'email'=>['required','email','max:255','unique:users,email'],'password'=>['required','string','min:8'],'admin_permissions'=>['nullable','array'],'admin_permissions.*'=>['string',Rule::in(array_keys(self::adminPermissionDefinitions()))]]);
         User::create([...$data,'role'=>UserRole::ADMIN->value,'is_active'=>true,'email_verified_at'=>now(),'google_id'=>null,'admin_permissions'=>array_values($data['admin_permissions']??[])]);
         return back()->with('success','Đã tạo tài khoản quản trị viên.');
     }
-
     public function administratorUpdate(Request $request,User $user):RedirectResponse
     {
         abort_unless($user->role===UserRole::ADMIN,404);
         $data=$request->validate(['name'=>['required','string','max:255','regex:/^[^@\\s]+$/',Rule::unique('users','name')->ignore($user->id)],'email'=>['required','email','max:255',Rule::unique('users','email')->ignore($user->id)],'password'=>['nullable','string','min:8'],'admin_permissions'=>['nullable','array'],'admin_permissions.*'=>['string',Rule::in(array_keys(self::adminPermissionDefinitions()))],'is_active'=>['required','boolean']]);
         if ($user->name==='admin') { $data['name']='admin'; $data['is_active']=true; $data['admin_permissions']=null; }
-        if (array_key_exists('password',$data) && $data['password']==='') unset($data['password']);
+        if (array_key_exists('password',$data) && blank($data['password'])) unset($data['password']);
         $user->update($data);
         return back()->with('success','Đã cập nhật quản trị viên.');
     }
-
-    public function administratorDelete(User $user):RedirectResponse
-    {
-        abort_unless($user->role===UserRole::ADMIN,404);
-        abort_if($user->name==='admin',422,'Không thể xóa tài khoản admin gốc.');
-        abort_if($user->id===request()->user()->id,422,'Không thể tự xóa tài khoản đang đăng nhập.');
-        $user->delete();
-        return back()->with('success','Đã xóa quản trị viên.');
-    }
-
-    public function administratorToggle(User $user):RedirectResponse
-    {
-        abort_unless($user->role===UserRole::ADMIN,404);
-        abort_if($user->name==='admin',422,'Không thể khóa tài khoản admin gốc.');
-        abort_if($user->id===request()->user()->id,422,'Không thể tự khóa tài khoản đang đăng nhập.');
-        $user->update(['is_active'=>!$user->is_active]);
-        return back()->with('success',$user->is_active?'Đã kích hoạt quản trị viên.':'Đã khóa quản trị viên.');
-    }
-
-    public static function adminPermissionDefinitions():array
-    {
-        return [
-            'dashboard'=>'Tổng quan', 'categories'=>'Danh mục', 'products'=>'Sản phẩm', 'inventory'=>'Kho hàng', 'orders'=>'Đơn hàng', 'coupons'=>'Mã giảm giá', 'shipping'=>'Phí vận chuyển', 'customers'=>'Khách hàng', 'employees'=>'Nhân viên', 'administrators'=>'Quản trị viên',
-        ];
-    }
-
+    public function administratorDelete(User $user):RedirectResponse{abort_unless($user->role===UserRole::ADMIN,404);abort_if($user->name==='admin',422,'Không thể xóa tài khoản admin gốc.');abort_if($user->id===request()->user()->id,422,'Không thể tự xóa tài khoản đang đăng nhập.');$user->delete();return back()->with('success','Đã xóa quản trị viên.');}
+    public function administratorToggle(User $user):RedirectResponse{abort_unless($user->role===UserRole::ADMIN,404);abort_if($user->name==='admin',422,'Không thể khóa tài khoản admin gốc.');abort_if($user->id===request()->user()->id,422,'Không thể tự khóa tài khoản đang đăng nhập.');$user->update(['is_active'=>!$user->is_active]);return back()->with('success',$user->is_active?'Đã kích hoạt quản trị viên.':'Đã khóa quản trị viên.');}
+    public static function adminPermissionDefinitions():array{return ['dashboard'=>'Tổng quan','categories'=>'Danh mục','products'=>'Sản phẩm','inventory'=>'Kho hàng','orders'=>'Đơn hàng','coupons'=>'Mã giảm giá','shipping'=>'Phí vận chuyển','customers'=>'Khách hàng','employees'=>'Nhân viên','administrators'=>'Quản trị viên'];}
     private function productRules():array{return ['category_id'=>['required','integer','exists:product_categories,id'],'name'=>['required','string','max:255'],'sku'=>['required','string','max:64','unique:admin_products,sku'],'brand'=>['nullable','string','max:100'],'price'=>['required','integer','min:0'],'old_price'=>['nullable','integer','gte:price'],'stock'=>['required','integer','min:0'],'image'=>['nullable','string','max:2000'],'short_description'=>['nullable','string','max:2000'],'description'=>['nullable','string'],'specs'=>['nullable','array']];}
 }

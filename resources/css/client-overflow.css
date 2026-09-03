@@ -1,9 +1,19 @@
-/* Keep the customer-facing application inside the viewport. */
+/* Customer catalog layout guard. Keep sizing deterministic and prevent generic CSS collisions. */
 html,body,#app{max-width:100%;min-width:0}
 html,body{overflow-x:hidden}
 .client-shell{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
 .client-shell>main{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
 .client-shell .shop-navbar{width:100%;max-width:100%;min-width:0}
-.client-shell .shop-navbar>.container{min-width:0;max-width:100%}
-.client-shell .catalog{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
-.client-shell .catalog .layout,.client-shell .catalog .results,.client-shell .catalog .grid{min-width:0;max-width:100%}
+.client-shell .shop-navbar>.container{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.client-shell .catalog{display:block;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;overflow-x:hidden!important}
+.client-shell .catalog,.client-shell .catalog *{box-sizing:border-box}
+.client-shell .catalog .layout{display:flex!important;align-items:flex-start!important;gap:18px!important;width:100%!important;max-width:100%!important;min-width:0!important}
+.client-shell .catalog .filters{flex:0 0 260px!important;width:260px!important;max-width:260px!important;min-width:0!important}
+.client-shell .catalog .results{flex:1 1 0!important;width:0!important;max-width:none!important;min-width:0!important;overflow:hidden!important}
+.client-shell .catalog .grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;width:100%!important;max-width:100%!important;min-width:0!important}
+.client-shell .catalog .card{width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+.client-shell .catalog .image,.client-shell .catalog .body{width:100%!important;max-width:100%!important;min-width:0!important}
+.client-shell .catalog img{max-width:100%!important}
+@media(max-width:1050px){.client-shell .catalog .grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:850px){.client-shell .catalog .layout{flex-direction:column!important}.client-shell .catalog .filters,.client-shell .catalog .results{width:100%!important;max-width:100%!important;flex:0 0 auto!important}.client-shell .catalog .grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:550px){.client-shell .catalog .grid{grid-template-columns:1fr!important}}

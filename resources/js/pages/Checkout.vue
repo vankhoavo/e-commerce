@@ -38,7 +38,7 @@ const paypalReady = ref(false);
 const paypalEligible = ref(false);
 const paypalContainer = ref<HTMLElement | null>(null);
 const paypalButton = ref<HTMLElement | null>(null);
-const paypalSession = ref<{ start: (options: Record<string, unknown>, order: Promise<string>) => Promise<unknown> } | null>(null);
+const paypalSession = ref<{ start: (options: Record<string, unknown>, order: Promise<{ orderId: string }>) => Promise<unknown> } | null>(null);
 const paypalClientId = String(import.meta.env.VITE_PAYPAL_CLIENT_ID ?? '').trim();
 
 const form = ref({
@@ -214,7 +214,7 @@ function loadPaypalSdk(): Promise<void> {
     });
 }
 
-async function createPaypalOrder(): Promise<string> {
+async function createPaypalOrder(): Promise<{ orderId: string }> {
     if (!validateShipping() || !validateVatInvoice()) throw new Error(shippingError.value || vatError.value);
 
     const response = await fetch('/paypal/orders', {
@@ -229,7 +229,7 @@ async function createPaypalOrder(): Promise<string> {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.id) throw new Error(data.message ?? 'Không thể tạo đơn PayPal Sandbox.');
-    return data.id as string;
+    return { orderId: String(data.id) };
 }
 
 async function capturePaypalOrder({ orderId }: { orderId: string }): Promise<void> {

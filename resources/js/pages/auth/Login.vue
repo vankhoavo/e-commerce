@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import { register } from '@/routes';
@@ -8,8 +8,9 @@ import { store } from '@/routes/login';
 
 defineOptions({ layout: { title: 'Đăng nhập tài khoản', description: 'Đăng nhập để tiếp tục mua sắm tại TechStore.' } });
 const identifier=ref('');
+const page=usePage();
 const friendlyAuthError=(message?:string)=>message==='auth.failed'?'Tài khoản hoặc mật khẩu không đúng.':message;
-const redirectTo=computed(()=>{const value=new URLSearchParams(window.location.search).get('redirect')??'/';return value.startsWith('/')&&!value.startsWith('//')?value:'/';});
+const redirectTo=computed(()=>{const url=String(page.url??'');const query=url.includes('?')?url.slice(url.indexOf('?')+1):'';const value=new URLSearchParams(query).get('redirect')??'/';return value.startsWith('/')&&!value.startsWith('//')?value:'/';});
 function handleLoginSuccess(){router.visit(identifier.value.trim().toLowerCase()==='admin'?'/admin':redirectTo.value);}
 defineProps<{status?:string}>();
 </script>

@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->foreignId('requested_by')->constrained('users')->cascadeOnDelete();
             $table->string('role', 30);
             $table->string('name');
-            $table->string('email')->unique();
+            $table->string('email');
             $table->string('phone', 30)->nullable();
             $table->string('password_hash');
             $table->string('status', 20)->default('pending');
@@ -22,8 +22,8 @@ return new class extends Migration {
             $table->text('reason')->nullable();
             $table->timestamps();
             $table->index(['role','status']);
+            $table->index('email');
         });
     }
-
     public function down(): void { Schema::dropIfExists('backoffice_role_requests'); }
 };

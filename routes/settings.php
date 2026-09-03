@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\EmailVerificationOtpController;
 use App\Http\Controllers\Settings\EmailChangeController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -14,6 +15,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/email/verify', [EmailChangeController::class, 'edit'])->name('email-change.edit');
     Route::post('settings/email/verify', [EmailChangeController::class, 'verify'])->middleware('throttle:6,1')->name('email-change.verify');
     Route::post('settings/email/resend', [EmailChangeController::class, 'resend'])->middleware('throttle:3,1')->name('email-change.resend');
+    Route::get('settings/orders', fn () => redirect()->route('profile.edit', ['section' => 'orders']))->name('settings.orders');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

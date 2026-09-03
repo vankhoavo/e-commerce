@@ -3,6 +3,7 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import '../css/app.css';
 import '../css/theme.css';
 import '../css/fixes.css';
+import '../css/client-overflow.css';
 import '../css/birth-date-modal.css';
 import '../css/checkout-vat.css';
 import { createInertiaApp, router } from '@inertiajs/vue3';

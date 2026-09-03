@@ -1,0 +1,1 @@
+<h2>Mật khẩu TechStore đã được thay đổi</h2><p>Xin chào {{ $user->name }}, mật khẩu tài khoản của bạn vừa được thay đổi thành công.</p><p>Nếu bạn không thực hiện thay đổi này, hãy liên hệ TechStore ngay: 0905955162 · vankhoa.work@gmail.com.</p>

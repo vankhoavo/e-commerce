@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Auth\EmailVerificationOtpController;
 use App\Http\Controllers\Settings\EmailChangeController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;

@@ -77,25 +77,21 @@ class ReturnRequestController extends Controller
         abort_unless(in_array($request->user()->role?->value, ['admin', 'sales'], true), 403, 'Chỉ Bán hàng hoặc Admin được ghi nhận hàng hoàn.');
         abort_unless($returnRequest->status === 'awaiting_receive', 422, 'Yêu cầu chưa ở bước nhận hàng hoàn.');
 
-        $inspectionNote = trim($request->string('inspection_note')->toString());
-        abort_if($inspectionNote === '', 422, 'Vui lòng ghi nhận kết quả kiểm tra hàng.');
-
         $returnRequest->update([
-            'status' => 'inspected',
+            'status' => 'inspecting',
             'received_by' => $request->user()->id,
             'received_at' => now(),
-            'inspection_note' => $inspectionNote,
         ]);
 
-        $returnRequest->order?->update(['status' => 'Đã kiểm tra hàng']);
+        $returnRequest->order?->update(['status' => 'Đang kiểm tra hàng']);
 
-        return back()->with('success', 'Đã ghi nhận hàng hoàn và chuyển sang bước quyết định hoàn tiền.');
+        return back()->with('success', 'Đã nhận hàng hoàn. Đơn hàng đang được kiểm tra.');
     }
 
     public function refund(Request $request, ReturnRequest $returnRequest): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403, 'Chỉ Admin được quyết định kết quả hoàn tiền.');
-        abort_unless($returnRequest->status === 'inspected', 422, 'Đơn hàng chưa được kiểm tra hàng.');
+        abort_unless($returnRequest->status === 'inspecting', 422, 'Đơn hàng chưa ở trạng thái đang kiểm tra hàng.');
 
         DB::transaction(function () use ($returnRequest): void {
             $returnRequest->update([
@@ -103,7 +99,7 @@ class ReturnRequestController extends Controller
                 'refund_status' => 'completed',
                 'refunded_at' => now(),
             ]);
-            $returnRequest->order?->update(['status' => 'Hoàn tiền']);
+            $returnRequest->order?->update(['status' => 'Đã hoàn tiền']);
         });
 
         return back()->with('success', 'Đã phê duyệt hoàn tiền cho đơn hàng.');
@@ -112,7 +108,7 @@ class ReturnRequestController extends Controller
     public function reject(Request $request, ReturnRequest $returnRequest): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403, 'Chỉ Admin được từ chối yêu cầu trả hàng.');
-        abort_unless(in_array($returnRequest->status, ['customer_requested', 'awaiting_admin', 'inspected'], true), 422, 'Yêu cầu không thể từ chối ở trạng thái hiện tại.');
+        abort_unless(in_array($returnRequest->status, ['customer_requested', 'awaiting_admin', 'inspecting'], true), 422, 'Yêu cầu không thể từ chối ở trạng thái hiện tại.');
 
         $returnRequest->update([
             'status' => 'rejected',
@@ -126,7 +122,7 @@ class ReturnRequestController extends Controller
     public function returnToCustomer(Request $request, ReturnRequest $returnRequest): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403, 'Chỉ Admin được xác nhận trả hàng lại khách.');
-        abort_unless($returnRequest->status === 'inspected', 422, 'Yêu cầu chưa ở bước kiểm tra hàng.');
+        abort_unless($returnRequest->status === 'inspecting', 422, 'Yêu cầu chưa ở bước kiểm tra hàng.');
 
         $returnRequest->update([
             'status' => 'rejected',

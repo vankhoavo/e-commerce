@@ -10,8 +10,7 @@ class EnsureAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless($request->user()?->isAdmin(), 403);
-
+        abort_unless($request->user()?->isBackOffice(), 403, 'Tài khoản không có quyền truy cập khu vực quản trị.');
         return $next($request);
     }
 }

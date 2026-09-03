@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\Order;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,48 @@ class ProfileController
     public function edit(Request $request): Response
     {
         $user = $request->user();
+        $orders = Order::query()
+            ->where('user_id', $user->id)
+            ->with('items')
+            ->latest('created_at')
+            ->get()
+            ->map(fn (Order $order): array => [
+                'id' => $order->id,
+                'code' => $order->code,
+                'createdAt' => optional($order->created_at)->toISOString(),
+                'customer' => [
+                    'name' => $order->customer_name,
+                    'phone' => $order->customer_phone,
+                    'email' => $order->customer_email,
+                    'address' => $order->customer_address,
+                    'note' => $order->note,
+                ],
+                'vatInvoice' => [
+                    'requested' => (bool) $order->vat_invoice_requested,
+                    'companyName' => $order->vat_company_name,
+                    'taxCode' => $order->vat_tax_code,
+                    'address' => $order->vat_address,
+                    'email' => $order->vat_email,
+                    'rate' => (float) $order->vat_rate,
+                    'amount' => $order->vat_amount,
+                ],
+                'items' => $order->items->map(fn ($item): array => [
+                    'id' => $item->product_id ?? $item->id,
+                    'name' => $item->name,
+                    'price' => (int) $item->price,
+                    'image' => $item->image,
+                    'quantity' => (int) $item->quantity,
+                ])->values()->all(),
+                'subtotal' => (int) $order->subtotal,
+                'shipping' => (int) $order->shipping,
+                'totalShipping' => (int) $order->total_shipping,
+                'total' => (int) $order->total,
+                'payment' => $order->payment,
+                'paypalOrderId' => $order->paypal_order_id,
+                'status' => $order->status,
+                'cancelledAt' => optional($order->cancelled_at)->toISOString(),
+                'returnedAt' => optional($order->returned_at)->toISOString(),
+            ])->values()->all();
 
         return Inertia::render('settings/Profile', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
@@ -34,6 +77,7 @@ class ProfileController
                 'created_at_diff' => $passkey->created_at->diffForHumans(),
                 'last_used_at_diff' => $passkey->last_used_at?->diffForHumans(),
             ])->values()->all() : [],
+            'orders' => $orders,
         ]);
     }
 

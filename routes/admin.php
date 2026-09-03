@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountDeletionController;
 use App\Http\Controllers\Admin\BackofficeRoleController;
+use App\Http\Controllers\Admin\CustomerActivationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ReturnRequestController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,7 @@ Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(func
     Route::get('/employees', fn (AdminController $c) => $c->users('staff'))->middleware('admin.permission:employees')->name('employees');
     Route::post('/customers', fn (AdminController $c, \Illuminate\Http\Request $r) => $c->userStore($r, 'customer'))->middleware('admin.permission:customers')->name('customers.store');
     Route::post('/employees', fn (AdminController $c, \Illuminate\Http\Request $r) => $c->userStore($r, 'staff'))->middleware('admin.permission:employees')->name('employees.store');
+    Route::patch('/users/{user}/google-activation', [CustomerActivationController::class, 'update'])->middleware('admin.permission:customers')->name('users.google-activation');
     Route::patch('/users/{user}', [AdminController::class, 'userUpdate'])->middleware('admin.permission:customers')->name('users.update');
     Route::delete('/users/{user}', [AdminController::class, 'userDelete'])->middleware('admin.permission:customers')->name('users.delete');
     Route::get('/orders', [AdminController::class, 'orders'])->middleware('admin.permission:orders')->name('orders');

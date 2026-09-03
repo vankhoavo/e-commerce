@@ -19,7 +19,7 @@ provide('techstore-settings-section', activeSection);
 function persistSection(section: SettingsSection): void { if (typeof document !== 'undefined') document.body.dataset.techstoreSettingsSection = section; if (typeof window !== 'undefined') { try { window.sessionStorage.setItem(SETTINGS_STORAGE_KEY, section); } catch {} } }
 function syncSectionFromNavigation(): void { if (typeof window === 'undefined') return; const urlValue = new URLSearchParams(window.location.search).get('section'); const historyValue = window.history.state?.settingsSection; const section = isSettingsSection(urlValue) ? urlValue : typeof historyValue === 'string' && isSettingsSection(historyValue) ? historyValue : readStoredSection() ?? 'profile'; activeSection.value = section; persistSection(section); }
 function selectSection(section: SettingsSection): void { if (!settingsNavItems.some((item) => item.key === section)) return; activeSection.value = section; persistSection(section); if (typeof window !== 'undefined') { const url = new URL(window.location.href); url.pathname = '/settings/profile'; if (section === 'profile') url.searchParams.delete('section'); else url.searchParams.set('section', section); window.history.pushState({ ...(window.history.state ?? {}), settingsSection: section }, '', `${url.pathname}${url.search}${url.hash}`); } }
-onMounted(() => { persistSection(activeSection.value); window.addEventListener('popstate', syncSectionFromNavigation); });
+onMounted(() => { syncSectionFromNavigation(); window.addEventListener('popstate', syncSectionFromNavigation); });
 onBeforeUnmount(() => { window.removeEventListener('popstate', syncSectionFromNavigation); });
 </script>
 <template>

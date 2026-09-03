@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\BackofficeRoleController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ReturnRequestController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(function (): void {
@@ -32,9 +34,20 @@ Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(func
     Route::delete('/orders/{order}',[AdminController::class,'orderDelete'])->middleware('admin.permission:orders')->middleware('throttle:10,1')->name('orders.delete');
     Route::patch('/orders/deletion-requests/{deletionRequest}/approve',[AdminController::class,'approveOrderDeletion'])->middleware('admin.permission:orders')->name('orders.deletion-requests.approve');
     Route::patch('/orders/deletion-requests/{deletionRequest}/reject',[AdminController::class,'rejectOrderDeletion'])->middleware('admin.permission:orders')->name('orders.deletion-requests.reject');
+    Route::get('/returns',[ReturnRequestController::class,'index'])->middleware('admin.permission:orders')->name('returns');
+    Route::patch('/returns/{returnRequest}/sales-approve',[ReturnRequestController::class,'salesApprove'])->middleware('admin.permission:orders')->name('returns.sales-approve');
+    Route::patch('/returns/{returnRequest}/admin-approve',[ReturnRequestController::class,'adminApprove'])->middleware('admin.permission:orders')->name('returns.admin-approve');
+    Route::patch('/returns/{returnRequest}/receive',[ReturnRequestController::class,'receive'])->middleware('admin.permission:orders')->name('returns.receive');
+    Route::patch('/returns/{returnRequest}/refund',[ReturnRequestController::class,'refund'])->middleware('admin.permission:orders')->name('returns.refund');
     Route::get('/administrators',[AdminController::class,'administrators'])->middleware('admin.permission:administrators')->name('administrators');
     Route::post('/administrators',[AdminController::class,'administratorStore'])->middleware('admin.permission:administrators')->name('administrators.store');
     Route::patch('/administrators/{user}',[AdminController::class,'administratorUpdate'])->middleware('admin.permission:administrators')->name('administrators.update');
     Route::patch('/administrators/{user}/toggle',[AdminController::class,'administratorToggle'])->middleware('admin.permission:administrators')->name('administrators.toggle');
     Route::delete('/administrators/{user}',[AdminController::class,'administratorDelete'])->middleware('admin.permission:administrators')->name('administrators.delete');
+    Route::get('/sales',[BackofficeRoleController::class,'index'])->defaults('role','sales')->middleware('admin.permission:orders')->name('sales');
+    Route::get('/technical',[BackofficeRoleController::class,'index'])->defaults('role','technical')->middleware('admin.permission:products')->name('technical');
+    Route::get('/customer-service',[BackofficeRoleController::class,'index'])->defaults('role','customer_service')->middleware('admin.permission:customers')->name('customer-service');
+    Route::post('/backoffice-requests',[BackofficeRoleController::class,'store'])->middleware('admin.permission:administrators')->name('backoffice-requests.store');
+    Route::patch('/backoffice-requests/{roleRequest}/approve',[BackofficeRoleController::class,'approve'])->middleware('admin.permission:administrators')->name('backoffice-requests.approve');
+    Route::patch('/backoffice-requests/{roleRequest}/reject',[BackofficeRoleController::class,'reject'])->middleware('admin.permission:administrators')->name('backoffice-requests.reject');
 });

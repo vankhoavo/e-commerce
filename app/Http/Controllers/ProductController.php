@@ -1,44 +1,20 @@
 <?php
-
 namespace App\Http\Controllers;
-
 use App\Models\AdminProduct;
+use App\Models\Order;
 use App\Models\ProductCategory;
+use App\Models\ProductReview;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-
 class ProductController extends Controller
 {
-    public function home(): Response
-    {
-        return Inertia::render('Home', [
-            'categories' => ProductCategory::query()->where('is_active',true)->withCount(['products as count'])->orderBy('name')->get(['id','name','slug','icon']),
-            'featuredProducts' => $this->productQuery()->where('is_active',true)->whereHas('category',fn($q)=>$q->where('slug','laptop'))->orderByDesc('sold_count')->limit(6)->get()->map(fn(AdminProduct $p)=>$this->transform($p)),
-        ]);
-    }
-
-    public function index(Request $request): Response
-    {
-        $query=$this->productQuery()->where('is_active',true);$category=$request->string('category')->toString();$search=$request->string('search')->toString();
-        if($category&&$category!=='all')$query->whereHas('category',fn($q)=>$q->where('slug',$category));
-        if($search!=='')$query->where(fn($q)=>$q->where('name','like','%'.$search.'%')->orWhere('brand','like','%'.$search.'%')->orWhere('sku','like','%'.$search.'%'));
-        $products=$query->latest('id')->get()->map(fn(AdminProduct $p)=>$this->transform($p))->values();
-        return Inertia::render('Products/Index',['category'=>$category,'search'=>$search,'products'=>$products,'categories'=>ProductCategory::query()->where('is_active',true)->withCount(['products as count'])->orderBy('name')->get(['id','name','slug','icon'])]);
-    }
-
-    public function show(string $slug): Response
-    {
-        $product=AdminProduct::query()->with('category:id,name,slug')->where('slug',$slug)->where('is_active',true)->first();
-        return Inertia::render('Products/Show',['product'=>$product?$this->transform($product):null]);
-    }
-
-    public function catalog(): JsonResponse
-    {
-        return response()->json(['products'=>AdminProduct::query()->where('is_active',true)->get(['id','slug','name','brand','price','image','stock'])->map(fn(AdminProduct $p)=>['id'=>$p->id,'slug'=>$p->slug,'name'=>$p->name,'brand'=>$p->brand,'price'=>(int)$p->price,'image'=>$p->image,'stock'=>(int)$p->stock])->values()]);
-    }
-
+    public function home():Response{return Inertia::render('Home',['categories'=>ProductCategory::query()->where('is_active',true)->withCount(['products as count'])->orderBy('name')->get(['id','name','slug','icon']),'featuredProducts'=>$this->productQuery()->where('is_active',true)->whereHas('category',fn($q)=>$q->where('slug','laptop'))->orderByDesc('sold_count')->limit(6)->get()->map(fn(AdminProduct$p)=>$this->transform($p))]);}
+    public function index(Request$request):Response{$query=$this->productQuery()->where('is_active',true);$category=$request->string('category')->toString();$search=$request->string('search')->toString();$brand=$request->string('brand')->toString();$type=$request->string('type')->toString();$line=$request->string('line')->toString();$min=$request->integer('min_price',0);$max=$request->integer('max_price',0);if($category&&$category!=='all')$query->whereHas('category',fn($q)=>$q->where('slug',$category));if($search!=='')$query->where(fn($q)=>$q->where('name','like','%'.$search.'%')->orWhere('brand','like','%'.$search.'%')->orWhere('sku','like','%'.$search.'%'));if($brand!=='')$query->where('brand',$brand);if($type!=='')$query->where('product_type',$type);if($line!=='')$query->where('product_line',$line);if($min>0)$query->where('price','>=',$min);if($max>0)$query->where('price','<=',$max);$products=$query->orderByDesc('sold_count')->get()->map(fn(AdminProduct$p)=>$this->transform($p))->values();$base=AdminProduct::query()->where('is_active',true);return Inertia::render('Products/Index',['category'=>$category,'search'=>$search,'products'=>$products,'categories'=>ProductCategory::query()->where('is_active',true)->withCount(['products as count'])->orderBy('name')->get(['id','name','slug','icon']),'filters'=>['brands'=>$base->clone()->whereNotNull('brand')->where('brand','<>','')->distinct()->orderBy('brand')->pluck('brand')->values(),'types'=>$base->clone()->whereNotNull('product_type')->distinct()->orderBy('product_type')->pluck('product_type')->values(),'lines'=>$base->clone()->whereNotNull('product_line')->where('product_line','<>','')->distinct()->orderBy('product_line')->pluck('product_line')->values()]]);}
+    public function show(string$slug):Response{$product=AdminProduct::query()->with('category:id,name,slug')->where('slug',$slug)->where('is_active',true)->first();if(!$product)return Inertia::render('Products/Show',['product'=>null,'reviews'=>[],'recommendations'=>[]]);$reviews=ProductReview::query()->where('product_id',$product->id)->where('is_approved',true)->with('user:id,name')->latest()->limit(30)->get()->map(fn(ProductReview$r)=>['id'=>$r->id,'rating'=>$r->rating,'content'=>$r->content,'name'=>$r->user?->name??'Khách hàng','createdAt'=>$r->created_at?->toIso8601String()])->values();$recommendations=$this->productQuery()->where('is_active',true)->where('id','!=',$product->id)->where(function($q)use($product){$q->where('category_id',$product->category_id)->orWhere('brand',$product->brand);})->orderByDesc('sold_count')->limit(4)->get()->map(fn(AdminProduct$p)=>$this->transform($p));return Inertia::render('Products/Show',['product'=>$this->transform($product),'reviews'=>$reviews,'recommendations'=>$recommendations]);}
+    public function review(Request$request,AdminProduct$product):JsonResponse{$data=$request->validate(['rating'=>['required','integer','between:1,5'],'content'=>['required','string','min:3','max:2000'],'order_id'=>['required','integer']]);$eligible=Order::query()->whereKey($data['order_id'])->where('user_id',$request->user()->id)->where('status','Đã giao')->whereHas('items',fn($q)=>$q->where('product_id',$product->id))->exists();if(!$eligible)return response()->json(['message'=>'Bạn chỉ có thể đánh giá sản phẩm sau khi đã nhận hàng.'],422);$review=ProductReview::updateOrCreate(['product_id'=>$product->id,'user_id'=>$request->user()->id,'order_id'=>$data['order_id']],['rating'=>$data['rating'],'content'=>$data['content'],'is_approved'=>true]);return response()->json(['review'=>['id'=>$review->id,'rating'=>$review->rating,'content'=>$review->content,'name'=>$request->user()->name,'createdAt'=>$review->created_at?->toIso8601String()]]);}
+    public function catalog(Request$request):JsonResponse{$query=AdminProduct::query()->where('is_active',true);$category=$request->input('Category');$manufacture=$request->input('Manufacture');$pageSize=min(100,(int)$request->input('PageSize',24));if($category)$query->where('category_id',$category);if($manufacture)$query->where('brand',$manufacture);return response()->json(['products'=>$query->paginate($pageSize)->through(fn(AdminProduct$p)=>$this->transform($p)),'Category'=>$category,'Manufacture'=>$manufacture,'Ispaged'=>(bool)$request->input('Ispaged',true),'PageSize'=>$pageSize]);}
     private function productQuery(){return AdminProduct::query()->with('category:id,name,slug');}
-    private function transform(AdminProduct $p):array{$gallery=$p->gallery?:array_values(array_filter([$p->image]));return ['id'=>$p->id,'slug'=>$p->slug,'name'=>$p->name,'category'=>$p->category?->name??'Sản phẩm','categorySlug'=>$p->category?->slug,'brand'=>$p->brand??'TechStore','price'=>(int)$p->price,'oldPrice'=>$p->old_price?(int)$p->old_price:null,'image'=>$p->image,'gallery'=>$gallery,'badge'=>$p->badge,'rating'=>(float)$p->rating,'sold'=>(int)$p->sold_count,'stock'=>(int)$p->stock,'shortDescription'=>$p->short_description,'description'=>$p->description,'specs'=>$p->specs?:[]];}
+    private function transform(AdminProduct$p):array{$gallery=$p->gallery?:array_values(array_filter([$p->image]));return['id'=>$p->id,'slug'=>$p->slug,'name'=>$p->name,'sku'=>$p->sku,'category'=>$p->category?->name??'Sản phẩm','categorySlug'=>$p->category?->slug,'brand'=>$p->brand??'TechStore','productType'=>$p->product_type,'productLine'=>$p->product_line,'price'=>(int)$p->price,'oldPrice'=>$p->old_price?(int)$p->old_price:null,'image'=>$p->image,'gallery'=>$gallery,'badge'=>$p->badge,'rating'=>(float)$p->rating,'sold'=>(int)$p->sold_count,'stock'=>(int)$p->stock,'shortDescription'=>$p->short_description,'description'=>$p->description,'specs'=>$p->specs?:[]];}
 }

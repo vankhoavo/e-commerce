@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PayPalController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\VatInvoiceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -36,6 +37,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->middleware('throttle:10,1')->name('paypal.orders.capture');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
+    Route::get('/orders/{order}/vat-invoice', [VatInvoiceController::class, 'download'])->name('orders.vat-invoice');
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::patch('/orders/{order}/return', [OrderController::class, 'returnOrder'])->name('orders.return');
 });

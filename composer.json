@@ -27,7 +27,13 @@
         "phpunit/phpunit": "^12.5.23"
     },
     "autoload": {
-        "psr-4": {"App\\": "app/", "Database\\Factories\\": "database/factories/", "Tests\\": "tests/"}
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {"Tests\\": "tests/"}
     },
     "scripts": {
         "setup": ["composer install", "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"", "@php artisan key:generate", "@php artisan migrate --force", "npm install", "npm run build"],

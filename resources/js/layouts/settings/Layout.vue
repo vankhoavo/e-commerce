@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Settings, UserRound, ShieldCheck, Palette, ReceiptText } from '@lucide/vue';
 import { onBeforeUnmount, onMounted, provide, ref } from 'vue';
-import Orders from '@/components/settings/Orders.vue';
+import Orders from '@/components/settings/OrdersDatabase.vue';
 
 export type SettingsSection = 'profile' | 'security' | 'appearance' | 'orders';
 
@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
 
         <main class="settings-page-content">
             <div v-show="activeSection !== 'orders'" class="settings-slot-view"><slot /></div>
-            <div v-show="activeSection === 'orders'" class="settings-orders-view"><Orders /></div>
+            <div v-show="activeSection === 'orders'" class="settings-orders-view"><Orders :orders="(pageOrders as any)" /></div>
         </main>
     </div>
 </template>

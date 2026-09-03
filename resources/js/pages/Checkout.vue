@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { formatPrice } from '@/data/products';
 import { readCart, writeCart, type CartItem } from '@/lib/cart';
@@ -21,6 +21,7 @@ const couponError = ref('');
 const couponLoading = ref(false);
 const paypalReady = ref(false);
 const paypalError = ref('');
+const paypalLoading = ref(false);
 const form = ref({ name: '', phone: '', email: '', address: '', note: '', payment: 'cod', vat: { requested: false, companyName: '', taxCode: '', address: '', email: '' } });
 const paypalClientId = String(import.meta.env.VITE_PAYPAL_CLIENT_ID ?? '').trim();
 const COD = 30000;
@@ -32,7 +33,10 @@ const total = computed(() => Math.max(0, subtotal.value - discount.value + shipp
 const clearCart = () => { if (buyNow.value) localStorage.removeItem('techstore_buy_now'); else if (userId.value) writeCart(userId.value, []); window.dispatchEvent(new Event('techstore-cart-updated')); };
 
 function loadCart() {
-    if (!userId.value) return;
+    if (!userId.value) {
+        router.visit(`/login?redirect=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+        return;
+    }
     const params = new URLSearchParams(window.location.search);
     buyNow.value = params.get('buy_now') === '1';
     if (buyNow.value) {
@@ -95,7 +99,9 @@ function loadPaypalSdk(): Promise<void> {
 }
 
 async function setupPaypal() {
-    if (paypalReady.value || !paypalClientId) return;
+    if (paypalReady.value || paypalLoading.value) return;
+    paypalLoading.value = true;
+    paypalError.value = '';
     try {
         await loadPaypalSdk();
         const sdk = await window.paypal!.createInstance({ clientId: paypalClientId, components: ['paypal-payments'], pageType: 'checkout' });
@@ -117,6 +123,7 @@ async function setupPaypal() {
         });
         paypalReady.value = true;
     } catch (e) { paypalError.value = e instanceof Error ? e.message : 'Không thể tải PayPal Sandbox.'; }
+    finally { paypalLoading.value = false; }
 }
 
 async function startPaypal() {
@@ -136,7 +143,8 @@ async function startPaypal() {
     } catch (e) { paypalError.value = e instanceof Error ? e.message : 'Không thể mở PayPal Sandbox.'; }
 }
 
-onMounted(() => { loadCart(); void setupPaypal(); });
+onMounted(loadCart);
+watch(() => form.value.payment, (payment) => { if (payment === 'paypal-sandbox' && !paypalReady.value) void setupPaypal(); });
 </script>
 
 <template>
@@ -145,8 +153,8 @@ onMounted(() => { loadCart(); void setupPaypal(); });
     <div v-if="submitted" class="success"><i class="bi bi-check-circle-fill" /><div><strong>Đặt hàng thành công</strong><p>Đơn hàng đã được tạo. TechStore sẽ gửi Email xác nhận.</p></div></div>
     <div v-else-if="!cart.length" class="empty"><i class="bi bi-cart-x" /><h2>Không có sản phẩm để đặt hàng</h2><Link href="/products" class="btn btn-primary">Khám phá sản phẩm</Link></div>
     <div v-else class="grid"><section class="panel"><div class="panel-title"><i class="bi bi-person-vcard" /><div><strong>Thông tin nhận hàng</strong><small>Người nhận và địa chỉ giao hàng</small></div></div><div class="fields"><label>Họ và tên<input v-model="form.name" /></label><label>Số điện thoại<input v-model="form.phone" /></label><label>Email<input v-model="form.email" type="email" /></label><label>Địa chỉ nhận hàng<textarea v-model="form.address" rows="2" /></label><label>Ghi chú<textarea v-model="form.note" rows="2" placeholder="Không bắt buộc" /></label></div><div class="panel-title mt"><i class="bi bi-receipt" /><div><strong>Hóa đơn VAT</strong><small>Không bắt buộc · hóa đơn thường luôn có</small></div></div><label class="check"><input v-model="form.vat.requested" type="checkbox" /> Tôi cần xuất hóa đơn VAT</label><div v-if="form.vat.requested" class="fields"><label>Tên công ty/đơn vị<input v-model="form.vat.companyName" /></label><label>Mã số thuế<input v-model="form.vat.taxCode" /></label><label>Địa chỉ xuất VAT<input v-model="form.vat.address" /></label><label>Email nhận VAT<input v-model="form.vat.email" type="email" /></label></div></section>
-    <aside class="side"><section class="panel"><div class="panel-title"><i class="bi bi-bag-check" /><div><strong>Đơn hàng</strong><small>{{ cart.reduce((n, item) => n + item.quantity, 0) }} sản phẩm</small></div></div><div class="items"><article v-for="item in cart" :key="item.id"><img :src="item.image" :alt="item.name" /><div><strong>{{ item.name }}</strong><small>{{ item.quantity }} × {{ formatPrice(item.price) }}</small></div><b>{{ formatPrice(item.price * item.quantity) }}</b></article></div><div class="coupon"><strong>Mã giảm giá thành viên</strong><small>Mã cuối tuần / Student / Teacher</small><div class="coupon-input"><input v-model="coupon" placeholder="Nhập mã" @keyup.enter="applyCoupon" /><button :disabled="couponLoading" @click="applyCoupon">Áp dụng</button></div><p v-if="couponError">{{ couponError }}</p><p v-if="couponInfo" class="coupon-ok">{{ couponInfo.coupon?.code ?? coupon }} · đã áp dụng</p></div><div class="totals"><div><span>Tạm tính</span><b>{{ formatPrice(subtotal) }}</b></div><div v-if="discount"><span>Giảm giá</span><b class="minus">-{{ formatPrice(discount) }}</b></div><div><span>Vận chuyển</span><b>{{ formatPrice(shipping) }}</b></div><div class="grand"><span>Tổng thanh toán</span><strong>{{ formatPrice(total) }}</strong></div></div></section>
-    <section class="panel"><div class="panel-title"><i class="bi bi-credit-card" /><div><strong>Thanh toán</strong><small>COD hoặc PayPal Sandbox</small></div></div><label class="payment"><input v-model="form.payment" value="cod" type="radio" /><span><b>Thanh toán khi nhận hàng (COD)</b><small>Thanh toán khi nhận được hàng · phí vận chuyển {{ formatPrice(COD) }}</small></span></label><label class="payment"><input v-model="form.payment" value="paypal-sandbox" type="radio" /><span><b>PayPal Sandbox</b><small>Thanh toán thử nghiệm bằng tài khoản PayPal Personal Sandbox.</small></span></label><div v-if="error" class="error">{{ error }}</div><div v-if="paypalError" class="error">{{ paypalError }}</div><button v-if="form.payment === 'cod'" class="place" @click="codSubmit">Đặt hàng · {{ formatPrice(total) }}</button><button v-else class="paypal" :disabled="!paypalReady" @click="startPaypal">{{ paypalReady ? 'Thanh toán bằng PayPal' : 'Đang tải PayPal...' }}</button></section></aside></div></div></main>
+    <aside class="side"><section class="panel"><div class="panel-title"><i class="bi bi-bag-check" /><div><strong>Đơn hàng</strong><small>{{ cart.reduce((n, item) => n + item.quantity, 0) }} sản phẩm</small></div></div><div class="items"><article v-for="item in cart" :key="item.id"><img :src="item.image" :alt="item.name" /><div><strong>{{ item.name }}</strong><small>{{ item.quantity }} × {{ formatPrice(item.price) }}</small></div><b>{{ formatPrice(item.price * item.quantity) }}</b></article></div><div class="coupon"><strong>Mã giảm giá thành viên</strong><small>Mã cuối tuần / Student / Teacher</small><div class="coupon-input"><input v-model="coupon" placeholder="Nhập mã" @keyup.enter="applyCoupon" /><button :disabled="couponLoading" @click="applyCoupon">{{ couponLoading ? 'Đang kiểm tra...' : 'Áp dụng' }}</button></div><p v-if="couponError">{{ couponError }}</p><p v-if="couponInfo" class="coupon-ok">{{ couponInfo.coupon?.code ?? coupon }} · đã áp dụng</p></div><div class="totals"><div><span>Tạm tính</span><b>{{ formatPrice(subtotal) }}</b></div><div v-if="discount"><span>Giảm giá</span><b class="minus">-{{ formatPrice(discount) }}</b></div><div><span>Vận chuyển</span><b>{{ formatPrice(shipping) }}</b></div><div class="grand"><span>Tổng thanh toán</span><strong>{{ formatPrice(total) }}</strong></div></div></section>
+    <section class="panel"><div class="panel-title"><i class="bi bi-credit-card" /><div><strong>Thanh toán</strong><small>COD hoặc PayPal Sandbox</small></div></div><label class="payment"><input v-model="form.payment" value="cod" type="radio" /><span><b>Thanh toán khi nhận hàng (COD)</b><small>Thanh toán khi nhận được hàng · phí vận chuyển {{ formatPrice(COD) }}</small></span></label><label class="payment"><input v-model="form.payment" value="paypal-sandbox" type="radio" /><span><b>PayPal Sandbox</b><small>Thanh toán thử nghiệm bằng tài khoản PayPal Personal Sandbox.</small></span></label><div v-if="error" class="error">{{ error }}</div><div v-if="paypalError" class="error">{{ paypalError }}</div><button v-if="form.payment === 'cod'" class="place" @click="codSubmit">Đặt hàng · {{ formatPrice(total) }}</button><button v-else class="paypal" :disabled="!paypalReady || paypalLoading" @click="startPaypal">{{ paypalLoading ? 'Đang tải PayPal...' : paypalReady ? 'Thanh toán bằng PayPal' : 'PayPal chưa sẵn sàng' }}</button></section></aside></div></div></main>
 </template>
 
 <style scoped>

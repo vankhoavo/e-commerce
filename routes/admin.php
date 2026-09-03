@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountDeletionController;
 use App\Http\Controllers\Admin\BackofficeRoleController;
 use App\Http\Controllers\Admin\CustomerActivationController;
+use App\Http\Controllers\Admin\OrderDeletionApprovalController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ReturnRequestController;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +36,7 @@ Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(func
     Route::patch('/orders/{order}/approve', [AdminController::class, 'orderApprove'])->middleware('admin.permission:orders')->name('orders.approve');
     Route::patch('/orders/{order}', [AdminController::class, 'orderUpdate'])->middleware('admin.permission:orders')->name('orders.update');
     Route::delete('/orders/{order}', [AdminController::class, 'orderDelete'])->middleware('admin.permission:orders')->middleware('throttle:10,1')->name('orders.delete');
-    Route::patch('/orders/deletion-requests/{deletionRequest}/approve', [AdminController::class, 'approveOrderDeletion'])->middleware('admin.permission:orders')->name('orders.deletion-requests.approve');
+    Route::patch('/orders/deletion-requests/{deletionRequest}/approve', [OrderDeletionApprovalController::class, 'approve'])->middleware('admin.permission:orders')->name('orders.deletion-requests.approve');
     Route::patch('/orders/deletion-requests/{deletionRequest}/reject', [AdminController::class, 'rejectOrderDeletion'])->middleware('admin.permission:orders')->name('orders.deletion-requests.reject');
     Route::get('/returns', [ReturnRequestController::class, 'index'])->middleware('admin.permission:orders')->name('returns');
     Route::patch('/returns/{returnRequest}/sales-approve', [ReturnRequestController::class, 'salesApprove'])->middleware('admin.permission:orders')->name('returns.sales-approve');

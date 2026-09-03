@@ -16,7 +16,7 @@ Route::get('/products', [ProductController::class, 'index'])->name('products.ind
 Route::get('/products/catalog', [ProductController::class, 'catalog'])->name('products.catalog');
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/cart', fn () => Inertia::render('Cart'))->name('cart.index');
-Route::get('/checkout', fn () => Inertia::render('Checkout'))->middleware('auth')->name('checkout.index');
+Route::get('/checkout', fn () => Inertia::render('Checkout'))->middleware(['auth','otp.verified'])->name('checkout.index');
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->middleware('guest')->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('guest')->name('google.callback');
 Route::get('/auth/google/check-email', [GoogleAuthController::class, 'checkEmail'])->middleware('guest')->name('google.check-email');
@@ -33,10 +33,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/verify-email-otp', [EmailVerificationOtpController::class, 'show'])->name('email-verify-otp.show');
     Route::post('/verify-email-otp', [EmailVerificationOtpController::class, 'verify'])->middleware('throttle:6,1')->name('email-verify-otp.verify');
     Route::post('/verify-email-otp/resend', [EmailVerificationOtpController::class, 'resend'])->middleware('throttle:3,1')->name('email-verify-otp.resend');
-    Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->middleware('throttle:10,1')->name('paypal.orders.create');
-    Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->middleware('throttle:10,1')->name('paypal.orders.capture');
+    Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->middleware(['otp.verified','throttle:10,1'])->name('paypal.orders.create');
+    Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->middleware(['otp.verified','throttle:10,1'])->name('paypal.orders.capture');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
+    Route::post('/orders', [OrderController::class, 'store'])->middleware(['otp.verified','throttle:10,1'])->name('orders.store');
     Route::get('/orders/{order}/vat-invoice', [VatInvoiceController::class, 'download'])->name('orders.vat-invoice');
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::patch('/orders/{order}/return', [OrderController::class, 'returnOrder'])->name('orders.return');

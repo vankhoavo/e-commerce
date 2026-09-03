@@ -7,7 +7,7 @@ use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth','client'])->group(function () {
     Route::redirect('settings', '/settings/profile');
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -17,14 +17,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('settings/email/verify', [EmailChangeController::class, 'verify'])->middleware('throttle:6,1')->name('email-change.verify');
     Route::post('settings/email/resend', [EmailChangeController::class, 'resend'])->middleware('throttle:3,1')->name('email-change.resend');
     Route::get('settings/orders', fn () => redirect()->route('profile.edit', ['section' => 'orders']))->name('settings.orders');
-});
-
-Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('settings/security', fn () => redirect()->route('profile.edit', ['section' => 'security']))->middleware(RequirePassword::class)->name('security.edit');
     Route::put('settings/password', [SecurityController::class, 'update'])->middleware('throttle:6,1')->name('user-password.update');
 });
-
-Route::get('.well-known/passkey-endpoints', function () {
-    return response()->json(['enroll' => route('security.edit'), 'manage' => route('security.edit')]);
-})->name('well-known.passkeys');
+Route::get('.well-known/passkey-endpoints', function () { return response()->json(['enroll' => route('security.edit'), 'manage' => route('security.edit')]); })->name('well-known.passkeys');

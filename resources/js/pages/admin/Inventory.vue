@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
-
-type Product = { id:number; name:string; sku:string; image:string|null; category:string; stock:number; sold:number; price:number; is_active:boolean };
-const props = defineProps<{ products:Product[]; summary:{stockUnits:number;soldUnits:number;stockValue:number;lowStock:number} }>();
-const search=ref(''); const filter=ref('all');
-const money=(n:number)=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n);
+type Product={id:number;name:string;sku:string;image:string|null;category:string;stock:number;sold:number;price:number;is_active:boolean};
+const props=defineProps<{products:Product[];summary:{stockUnits:number;soldUnits:number;stockValue:number;lowStock:number}}>();
+const search=ref('');const filter=ref('all');
 const rows=computed(()=>props.products.filter(p=>`${p.name} ${p.sku} ${p.category}`.toLowerCase().includes(search.value.toLowerCase())).filter(p=>filter.value==='all'||(filter.value==='low'&&p.stock<10)||(filter.value==='out'&&p.stock===0)));
+const money=(n:number)=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n);
 </script>
 <template>
 <div class="admin-page">
-  <div class="admin-page-head"><div><div class="admin-kicker">KHO HÀNG</div><h1>Tồn kho & hàng đã bán</h1><p>Theo dõi số lượng đã bán, tồn thực tế và giá trị hàng đang nằm trong kho.</p></div><Link href="/admin/products" class="btn btn-primary"><i class="bi bi-box-seam me-2"/>Quản lý sản phẩm</Link></div>
+  <div class="admin-page-head"><div><div class="admin-kicker">KHO HÀNG</div><h1>Kho hàng</h1><p>Theo dõi tồn kho hiện tại và tình trạng sản phẩm.</p></div><Link href="/admin/products" class="btn btn-primary"><i class="bi bi-box-seam me-2"/>Quản lý sản phẩm</Link></div>
   <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-xl-3"><div class="inventory-stat"><span class="stat-dot blue"><i class="bi bi-boxes"/></span><div><span>Tồn kho hiện tại</span><strong>{{props.summary.stockUnits.toLocaleString('vi-VN')}}</strong><small>đơn vị sản phẩm</small></div></div></div>
-    <div class="col-12 col-sm-6 col-xl-3"><div class="inventory-stat"><span class="stat-dot green"><i class="bi bi-cart-check"/></span><div><span>Đã bán</span><strong>{{props.summary.soldUnits.toLocaleString('vi-VN')}}</strong><small>theo đơn đã duyệt</small></div></div></div>
+    <div class="col-12 col-sm-6 col-xl-3"><div class="inventory-stat"><span class="stat-dot green"><i class="bi bi-cart-check"/></span><div><span>Đã bán</span><strong>{{props.summary.soldUnits.toLocaleString('vi-VN')}}</strong><small>theo dữ liệu đơn hàng</small></div></div></div>
     <div class="col-12 col-sm-6 col-xl-3"><div class="inventory-stat"><span class="stat-dot purple"><i class="bi bi-cash-stack"/></span><div><span>Giá trị tồn kho</span><strong>{{money(props.summary.stockValue)}}</strong><small>theo giá bán hiện tại</small></div></div></div>
     <div class="col-12 col-sm-6 col-xl-3"><div class="inventory-stat"><span class="stat-dot red"><i class="bi bi-exclamation-triangle"/></span><div><span>Sắp hết hàng</span><strong>{{props.summary.lowStock}}</strong><small>sản phẩm dưới 10 đơn vị</small></div></div></div>
   </div>

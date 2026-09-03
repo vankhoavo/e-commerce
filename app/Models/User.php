@@ -14,25 +14,8 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-/**
- * @property int $id
- * @property string $name
- * @property string $email
- * @property string|null $phone
- * @property string|null $address
- * @property string|null $address_province
- * @property string|null $address_ward
- * @property string|null $address_detail
- * @property string|null $birth_date
- * @property UserRole $role
- * @property bool $is_active
- * @property string|null $avatar
- * @property string|null $google_id
- * @property Carbon|null $email_verified_at
- * @property string $password
- */
-#[Fillable(['name', 'email', 'phone', 'address', 'address_province', 'address_ward', 'address_detail', 'birth_date', 'password', 'role', 'is_active', 'avatar', 'google_id'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+#[Fillable(['name','email','phone','address','address_province','address_ward','address_detail','birth_date','password','role','is_active','avatar','google_id','admin_permissions'])]
+#[Hidden(['password','two_factor_secret','two_factor_recovery_codes','remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
@@ -41,11 +24,12 @@ class User extends Authenticatable implements PasskeyUser
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'role' => UserRole::class,
-            'is_active' => 'boolean',
-            'two_factor_confirmed_at' => 'datetime',
+            'email_verified_at'=>'datetime',
+            'password'=>'hashed',
+            'role'=>UserRole::class,
+            'is_active'=>'boolean',
+            'admin_permissions'=>'array',
+            'two_factor_confirmed_at'=>'datetime',
         ];
     }
 
@@ -56,6 +40,14 @@ class User extends Authenticatable implements PasskeyUser
 
     public function isStaff(): bool
     {
-        return $this->is_active && in_array($this->role, [UserRole::ADMIN, UserRole::STAFF], true);
+        return $this->is_active && in_array($this->role,[UserRole::ADMIN,UserRole::STAFF],true);
+    }
+
+    public function hasAdminPermission(string $permission): bool
+    {
+        if (! $this->isAdmin()) return false;
+        // Tài khoản admin gốc có toàn quyền quản trị.
+        if ($this->name === 'admin') return true;
+        return in_array($permission, $this->admin_permissions ?? [], true);
     }
 }

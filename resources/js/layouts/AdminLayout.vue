@@ -4,7 +4,7 @@ import { computed } from 'vue';
 const page=usePage();const currentPath=computed(()=>page.url.split('?')[0]);
 const nav=[
  {label:'Tổng quan',items:[['/admin','Dashboard','bi-grid-1x2-fill']]},
- {label:'Kinh doanh',items:[['/admin/categories','Danh mục','bi-tags'],['/admin/products','Sản phẩm','bi-box-seam'],['/admin/inventory','Kho hàng','bi-boxes'],['/admin/orders','Đơn hàng','bi-receipt'],['/admin/coupons','Mã giảm giá','bi-ticket-perforated'],['/admin/shipping','Phí vận chuyển','bi-truck']]},
+ {label:'Kinh doanh',items:[['/admin/categories','Danh mục','bi-tags'],['/admin/products','Sản phẩm','bi-box-seam'],['/admin/inventory','Kho hàng','bi-boxes'],['/admin/orders','Đơn hàng','bi-receipt'],['/admin/orders/deletion-requests','Yêu cầu xóa','bi-shield-exclamation'],['/admin/coupons','Mã giảm giá','bi-ticket-perforated'],['/admin/shipping','Phí vận chuyển','bi-truck']]},
  {label:'Hệ thống',items:[['/admin/customers','Khách hàng','bi-people'],['/admin/employees','Nhân viên','bi-person-badge'],['/admin/administrators','Quản trị viên','bi-shield-lock-fill']]},
 ];
 const leaveAdmin=()=>router.post('/logout',{}, {preserveScroll:false,onSuccess:()=>window.location.assign('/')});

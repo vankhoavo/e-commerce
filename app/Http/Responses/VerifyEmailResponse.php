@@ -14,6 +14,10 @@ class VerifyEmailResponse implements VerifyEmailResponseContract
             return new JsonResponse('', 204);
         }
 
+        if ($request->user()?->isAdmin()) {
+            return redirect()->to('/admin');
+        }
+
         return redirect()->intended('/?verified=1');
     }
 }

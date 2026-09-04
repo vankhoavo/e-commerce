@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/verify-email-otp', [EmailVerificationOtpController::class, 'show'])->name('email-verify-otp.show');
     Route::post('/verify-email-otp', [EmailVerificationOtpController::class, 'verify'])->middleware('throttle:6,1')->name('email-verify-otp.verify');
     Route::post('/verify-email-otp/resend', [EmailVerificationOtpController::class, 'resend'])->middleware('throttle:3,1')->name('email-verify-otp.resend');
+    Route::post('/verify-email-otp/defer', [EmailVerificationOtpController::class, 'defer'])->name('email-verify-otp.defer');
     Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->middleware('throttle:10,1')->name('paypal.orders.create');
     Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->middleware('throttle:10,1')->name('paypal.orders.capture');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');

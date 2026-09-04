@@ -52,4 +52,31 @@ class AuthorizationTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_admin_is_redirected_away_from_client_pages(): void
+    {
+        $user = User::factory()->admin()->create();
+
+        foreach ([
+            route('home'),
+            route('products.index'),
+            route('cart.index'),
+            route('dashboard'),
+            route('profile.edit'),
+        ] as $url) {
+            $response = $this->actingAs($user)->get($url);
+
+            $response->assertRedirect(route('admin.dashboard'));
+        }
+    }
+
+    public function test_admin_can_logout(): void
+    {
+        $user = User::factory()->admin()->create();
+
+        $response = $this->actingAs($user)->post(route('logout'));
+
+        $this->assertGuest();
+        $response->assertRedirect(route('home'));
+    }
 }

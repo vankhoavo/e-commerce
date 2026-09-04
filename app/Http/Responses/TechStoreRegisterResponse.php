@@ -3,7 +3,6 @@
 namespace App\Http\Responses;
 
 use App\Services\EmailOtpService;
-use Illuminate\Support\Facades\Auth;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -18,19 +17,12 @@ class TechStoreRegisterResponse implements RegisterResponseContract
         }
 
         $user = $request->user();
-        $usedGoogleLinkedEmail = (bool) ($user?->google_id);
 
-        if ($user && ! $user->email_verified_at && ! $usedGoogleLinkedEmail) {
+        if ($user && ! $user->email_verified_at && ! $user->google_id) {
             $this->otp->send($user, $user->email);
+            return redirect()->route('email-verify-otp.show');
         }
 
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect()->route('login')->with(
-            'status',
-            $usedGoogleLinkedEmail ? 'google-password-created' : 'registration-success',
-        );
+        return redirect()->intended('/')->with('status', 'registration-success');
     }
 }

@@ -22,7 +22,7 @@ class CreateNewUser implements CreatesNewUsers
         ])->validate();
 
         $email = mb_strtolower(trim($input['email']));
-        $googleUser = User::query()->where('email',$email)->whereNotNull('google_id')->first();
+        $googleUser = User::query()->where('email', $email)->whereNotNull('google_id')->first();
         if ($googleUser) {
             abort_unless($googleUser->is_active,403,'Tài khoản đã bị khóa.');
             $googleUser->forceFill(['name'=>$input['name'],'password'=>$input['password'],'birth_date'=>$googleUser->birth_date?:today()])->save();
@@ -30,7 +30,6 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         $user=User::create(['name'=>$input['name'],'email'=>$email,'password'=>$input['password'],'birth_date'=>today()]);
-        $this->emailOtpService->send($user,$user->email);
         return $user;
     }
 }

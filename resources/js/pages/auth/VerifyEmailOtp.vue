@@ -52,11 +52,7 @@ function openResend() {
             </button>
         </Form>
 
-        <button
-            type="button"
-            class="btn btn-link w-100 mt-2"
-            @click="openResend"
-        >
+        <button type="button" class="btn btn-link w-100 mt-2" @click="openResend">
             Gửi lại mã OTP
         </button>
 
@@ -76,7 +72,7 @@ function openResend() {
         </Form>
 
         <p v-if="hasPendingCode && expiresAt" class="small text-muted text-center mt-3 mb-0">
-            Mã hiện tại vẫn đang có hiệu lực. Bạn có thể xác thực ngay hoặc chọn xác thực lại sau trong Thông tin cá nhân.
+            Mã hiện tại vẫn đang có hiệu lực. Bạn có thể xác thực ngay hoặc xác thực lại sau trong Thông tin cá nhân.
         </p>
 
         <Link href="/" class="auth-back"><i class="bi bi-arrow-left me-1" />Về trang chủ</Link>

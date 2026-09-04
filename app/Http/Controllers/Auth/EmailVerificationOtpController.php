@@ -85,4 +85,17 @@ class EmailVerificationOtpController
 
         return back()->with('status', 'verification-code-sent')->with('otp_expires_at', $record->expires_at->toISOString());
     }
+
+    public function defer(Request $request): RedirectResponse
+    {
+        if (! $request->user()) {
+            return to_route('login');
+        }
+
+        if ($request->user()->email_verified_at) {
+            return to_route('profile.edit');
+        }
+
+        return to_route('profile.edit')->with('status', 'email-verification-deferred');
+    }
 }

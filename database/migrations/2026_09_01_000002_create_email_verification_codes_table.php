@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('email');
-            $table->string('code', 6);
+            $table->string('code', 255);
             $table->timestamp('expires_at');
             $table->unsignedTinyInteger('attempts')->default(0);
             $table->timestamp('verified_at')->nullable();

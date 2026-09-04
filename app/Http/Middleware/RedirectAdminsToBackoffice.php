@@ -10,7 +10,7 @@ class RedirectAdminsToBackoffice
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->is('admin') || $request->is('admin/*') || $request->is('logout')) {
+        if ($request->is('admin') || $request->is('admin/*') || $request->is('logout') || $request->is('.well-known/*')) {
             return $next($request);
         }
 

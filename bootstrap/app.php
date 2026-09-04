@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Symfony\Component\HttpKernel\Exception\AuthenticationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -43,6 +44,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $exceptions->render(function (\Throwable $exception, Request $request) {
+            // AuthenticationException phải được xử lý bởi middleware auth/Fortify
+            // để guest truy cập khu vực quản trị vẫn được chuyển về trang đăng nhập.
+            if ($exception instanceof AuthenticationException) {
+                return null;
+            }
+
             if ($request->expectsJson() || $request->is('api/*')) {
                 return null;
             }

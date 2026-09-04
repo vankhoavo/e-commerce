@@ -97,19 +97,26 @@ class GoogleAuthController
             $user->forceFill(['email_verified_at' => now()])->save();
         } else {
             abort_unless($user->is_active, 403, 'Tài khoản đã bị khóa.');
+
+            if ($user->role === UserRole::ADMIN) {
+                return redirect()->to('/admin');
+            }
+
             $user->forceFill([
                 'google_id' => $googleId,
                 'avatar' => data_get($googleUser, 'picture') ?: $user->avatar,
                 'email_verified_at' => $user->email_verified_at ?: now(),
                 'birth_date' => $user->birth_date ?: today(),
-                // Google chỉ được dùng cho tài khoản khách hàng; không cho phép dùng Google để vào Admin.
-                'role' => $user->role === UserRole::ADMIN ? UserRole::CUSTOMER : $user->role,
             ])->save();
         }
 
         Auth::login($user, remember: true);
         $request->session()->regenerate();
         $returnTo = $request->session()->pull('google_oauth_redirect', '/');
+
+        if ($user->isAdmin()) {
+            return redirect()->to('/admin');
+        }
 
         return redirect()->to(is_string($returnTo) && str_starts_with($returnTo, '/') && ! str_starts_with($returnTo, '//') ? $returnTo : '/');
     }

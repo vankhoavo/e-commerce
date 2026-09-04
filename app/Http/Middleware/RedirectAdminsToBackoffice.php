@@ -15,6 +15,13 @@ class RedirectAdminsToBackoffice
         }
 
         if ($request->user()?->isAdmin()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Tài khoản quản trị chỉ được sử dụng trong khu vực quản trị.',
+                    'redirect' => url('/admin'),
+                ], 403);
+            }
+
             return redirect()->to('/admin');
         }
 

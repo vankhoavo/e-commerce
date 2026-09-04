@@ -2,15 +2,12 @@
 
 namespace App\Http\Responses;
 
-use App\Services\EmailOtpService;
 use Illuminate\Http\JsonResponse;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Symfony\Component\HttpFoundation\Response;
 
 class LoginResponse implements LoginResponseContract
 {
-    public function __construct(private readonly EmailOtpService $otp) {}
-
     public function toResponse($request): Response
     {
         if ($request->wantsJson()) {
@@ -24,7 +21,6 @@ class LoginResponse implements LoginResponseContract
         }
 
         if ($user && ! $user->email_verified_at) {
-            $this->otp->send($user, $user->email);
             return redirect()->route('email-verify-otp.show');
         }
 

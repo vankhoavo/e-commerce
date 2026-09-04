@@ -8,29 +8,36 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RedirectAdminsToBackoffice
 {
+    private const ADMIN_PREFIX = 'admin';
+
     public function handle(Request $request, Closure $next): Response
     {
-        if (
-            $request->is('admin')
-            || $request->is('admin/*')
-            || $request->is('logout')
-            || $request->is('auth/google*')
-            || $request->is('.well-known/*')
-        ) {
+        if ($this->shouldBypass($request)) {
             return $next($request);
         }
 
-        if ($request->user()?->isAdmin()) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Tài khoản quản trị chỉ được sử dụng trong khu vực quản trị.',
-                    'redirect' => url('/admin'),
-                ], 403);
-            }
+        $user = $request->user();
 
-            return redirect()->to('/admin');
+        if (! $user?->isAdmin()) {
+            return $next($request);
         }
 
-        return $next($request);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Tài khoản quản trị chỉ được sử dụng trong khu vực quản trị.',
+                'redirect' => url('/admin'),
+            ], 403);
+        }
+
+        return redirect()->to('/admin');
+    }
+
+    private function shouldBypass(Request $request): bool
+    {
+        return $request->is(self::ADMIN_PREFIX)
+            || $request->is(self::ADMIN_PREFIX.'/*')
+            || $request->is('logout')
+            || $request->is('auth/google*')
+            || $request->is('.well-known/*');
     }
 }

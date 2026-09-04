@@ -11,7 +11,13 @@ class PasskeyLoginResponse implements PasskeyLoginResponseContract
 {
     public function toResponse($request): Response
     {
-        $redirect = Fortify::redirects('login') ?: '/dashboard';
+        $user = $request->user();
+
+        if ($user?->isAdmin()) {
+            $redirect = '/admin';
+        } else {
+            $redirect = Fortify::redirects('login') ?: '/';
+        }
 
         return $request->wantsJson()
             ? new JsonResponse(['redirect' => redirect()->intended($redirect)->getTargetUrl()], 200)

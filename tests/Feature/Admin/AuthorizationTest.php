@@ -70,6 +70,16 @@ class AuthorizationTest extends TestCase
         }
     }
 
+    public function test_admin_can_make_json_requests_to_admin_routes(): void
+    {
+        $user = User::factory()->admin()->create();
+
+        $response = $this->actingAs($user)
+            ->getJson(route('admin.dashboard'));
+
+        $response->assertOk();
+    }
+
     public function test_admin_can_logout(): void
     {
         $user = User::factory()->admin()->create();

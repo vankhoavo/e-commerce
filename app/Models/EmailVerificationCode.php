@@ -10,6 +10,8 @@ class EmailVerificationCode extends Model
 {
     protected $fillable = ['user_id', 'email', 'code', 'expires_at', 'attempts', 'verified_at'];
 
+    protected $hidden = ['code'];
+
     protected function casts(): array
     {
         return ['expires_at' => 'datetime', 'verified_at' => 'datetime'];

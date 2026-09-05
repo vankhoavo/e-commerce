@@ -107,7 +107,7 @@ class AccountRecoveryRequestController extends Controller
 
     private function authorizeReviewer(Request $request): void
     {
-        abort_unless($request->user() && $request->user()->is_active && in_array($request->user()->role, [UserRole::ADMIN, UserRole::SENIOR_STAFF], true), 403);
+        abort_unless($request->user() && $request->user()->is_active && in_array($request->user()->role, [UserRole::ADMIN, UserRole::SENIOR_STAFF, UserRole::STAFF], true), 403);
     }
 
     private function maskEmail(string $email): string

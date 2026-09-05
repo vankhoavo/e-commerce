@@ -22,7 +22,7 @@ class SendVatInvoiceEmailJob implements ShouldQueue
         public readonly int $orderId,
         public readonly string $recipient,
     ) {
-        $this->onQueue('emails');
+        $this->onQueue('default');
     }
 
     public function handle(): void

@@ -26,7 +26,8 @@ class SendEmailOtpJob implements ShouldQueue
         public readonly string $message,
         public readonly string $type = 'verification',
     ) {
-        $this->onQueue('emails');
+        // Laravel Cloud currently provides the Managed Queue as `default`.
+        $this->onQueue('default');
     }
 
     public function handle(): void

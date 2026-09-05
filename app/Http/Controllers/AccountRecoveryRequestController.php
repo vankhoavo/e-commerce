@@ -47,8 +47,7 @@ class AccountRecoveryRequestController extends Controller
 
         $key = $this->sendKey($email, $request->ip());
         if (RateLimiter::tooManyAttempts($key, self::MAX_SENDS)) {
-            $remaining = RateLimiter::availableIn($key);
-            return back()->withErrors(['email' => 'Bạn đã yêu cầu gửi OTP 5 lần. Vui lòng quay lại sau '.ceil($remaining / 60).' phút.']);
+            return back()->withErrors(['email' => 'Bạn đã yêu cầu gửi OTP 5 lần. Vui lòng quay lại sau 60 phút.']);
         }
 
         if ($pending && ! $pending->otpExpired()) {
@@ -81,6 +80,7 @@ class AccountRecoveryRequestController extends Controller
             'expiresAt' => $recovery->otp_expires_at->toISOString(),
             'remainingAttempts' => max(0, 5 - $recovery->otp_attempts),
             'status' => session('status'),
+            'sendLimitReached' => RateLimiter::tooManyAttempts($this->sendKey($recovery->email, $request->ip()), self::MAX_SENDS),
         ]);
     }
 
@@ -124,10 +124,7 @@ class AccountRecoveryRequestController extends Controller
 
     public function requestGoogle(Request $request, User $user, AccountRecoveryService $service): JsonResponse
     {
-        if (! $user->trashed() || $user->role !== UserRole::CUSTOMER || ! $user->is_active) {
-            return response()->json(['ok' => false], 422);
-        }
-
+        if (! $user->trashed() || $user->role !== UserRole::CUSTOMER || ! $user->is_active) return response()->json(['ok' => false], 422);
         $recovery = $service->createOtpRequest($user, 'google');
         $request->session()->put('account_recovery_request_id', $recovery->id);
         return response()->json(['ok' => true, 'redirect' => route('account.recovery.pending')]);

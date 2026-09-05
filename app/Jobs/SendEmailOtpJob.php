@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\AccountRecoveryRequest;
 use App\Models\EmailVerificationCode;
 use App\Models\PasswordResetCode;
 use App\Models\User;
@@ -30,18 +31,25 @@ class SendEmailOtpJob implements ShouldQueue
 
     public function handle(): void
     {
-        $record = $this->type === 'password_reset'
-            ? PasswordResetCode::query()->whereKey($this->recordId)->where('user_id', $this->userId)->where('email', $this->email)->whereNull('used_at')->first()
-            : EmailVerificationCode::query()->whereKey($this->recordId)->where('user_id', $this->userId)->where('email', $this->email)->whereNull('verified_at')->first();
-
-        if (! $record || $record->expired()) {
-            return;
+        if ($this->type === 'account_recovery') {
+            $record = AccountRecoveryRequest::query()
+                ->whereKey($this->recordId)
+                ->where('user_id', $this->userId)
+                ->where('email', $this->email)
+                ->where('status', 'pending_otp')
+                ->first();
+        } else {
+            $record = $this->type === 'password_reset'
+                ? PasswordResetCode::query()->whereKey($this->recordId)->where('user_id', $this->userId)->where('email', $this->email)->whereNull('used_at')->first()
+                : EmailVerificationCode::query()->whereKey($this->recordId)->where('user_id', $this->userId)->where('email', $this->email)->whereNull('verified_at')->first();
         }
 
-        $user = User::query()->whereKey($this->userId)->where('is_active', true)->first();
-        if (! $user) {
-            return;
-        }
+        if (! $record || $record->expired()) return;
+
+        $userQuery = User::query();
+        if ($this->type === 'account_recovery') $userQuery->withTrashed();
+        $user = $userQuery->whereKey($this->userId)->where('is_active', true)->first();
+        if (! $user) return;
 
         Mail::raw($this->message, function ($mail): void {
             $mail->to($this->email)->subject($this->subject);

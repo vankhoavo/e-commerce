@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\UserRole;
+use App\Models\AccountRecoveryRequest;
 use App\Models\User;
+use App\Services\AccountRecoveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,14 +31,15 @@ class GoogleAuthController
     public function checkEmail(Request $request): JsonResponse
     {
         $email = Str::lower(trim($request->string('email')->toString()));
-        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) return response()->json(['exists'=>false,'available'=>false,'google_linked'=>false]);
-        $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first(['id','google_id']);
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) return response()->json(['exists'=>false,'available'=>false,'google_linked'=>false,'deleted'=>false]);
+        $user = User::withTrashed()->whereRaw('LOWER(email) = ?', [$email])->first(['id','google_id','deleted_at']);
         $exists = (bool) $user;
+        $deleted = (bool) $user?->deleted_at;
         $googleLinked = (bool) ($user?->google_id);
-        return response()->json(['exists'=>$exists,'available'=>!$exists||$googleLinked,'google_linked'=>$googleLinked]);
+        return response()->json(['exists'=>$exists,'available'=>!$exists||$googleLinked,'google_linked'=>$googleLinked,'deleted'=>$deleted]);
     }
 
-    public function callback(Request $request): RedirectResponse
+    public function callback(Request $request, AccountRecoveryService $recoveryService): RedirectResponse
     {
         $state = $request->string('state')->toString();
         $sessionState = $request->session()->pull('google_oauth_state');
@@ -51,7 +54,19 @@ class GoogleAuthController
         $googleId = data_get($googleUser, 'sub');
         $email = Str::lower((string) data_get($googleUser, 'email'));
         abort_unless($googleId && $email && (bool) data_get($googleUser, 'email_verified', false), 422, 'Tài khoản Google không cung cấp email đã xác minh.');
-        $user = User::query()->where('google_id', $googleId)->first() ?: User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+
+        $user = User::withTrashed()->where('google_id', $googleId)->first() ?: User::withTrashed()->whereRaw('LOWER(email) = ?', [$email])->first();
+
+        if ($user?->trashed()) {
+            abort_unless($user->role === UserRole::CUSTOMER && $user->is_active, 403, 'Tài khoản không thể khôi phục.');
+            $pending = AccountRecoveryRequest::query()->where('user_id', $user->id)->where('status', 'pending_approval')->exists();
+            $recovery = $pending
+                ? AccountRecoveryRequest::query()->where('user_id', $user->id)->where('status', 'pending_approval')->latest()->firstOrFail()
+                : $recoveryService->createOtpRequest($user, 'google');
+            $request->session()->put('account_recovery_request_id', $recovery->id);
+            return to_route('account.recovery.pending');
+        }
+
         if (! $user) {
             $user = User::create(['name'=>(string)(data_get($googleUser,'name') ?: Str::before($email,'@')),'email'=>$email,'password'=>Str::random(64),'role'=>UserRole::CUSTOMER,'is_active'=>true,'avatar'=>data_get($googleUser,'picture'),'google_id'=>$googleId,'birth_date'=>today()]);
             $user->forceFill(['email_verified_at'=>now()])->save();

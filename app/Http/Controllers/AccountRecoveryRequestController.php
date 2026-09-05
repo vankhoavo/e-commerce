@@ -21,12 +21,35 @@ class AccountRecoveryRequestController extends Controller
         $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
         $email = Str::lower(trim($data['email']));
         $user = User::withTrashed()->whereRaw('LOWER(email) = ?', [$email])->first();
-        if (! $user || ! $user->trashed() || $user->role !== UserRole::CUSTOMER) return back()->withErrors(['email' => 'Không tìm thấy tài khoản đã được xóa mềm với email này.']);
-        if (! $user->is_active) return back()->withErrors(['email' => 'Tài khoản đang bị khóa và không thể gửi yêu cầu khôi phục.']);
-        $pending = AccountRecoveryRequest::query()->where('user_id', $user->id)->whereIn('status', ['pending_otp', 'pending_approval'])->exists();
-        if ($pending) return back()->with('status', 'recovery-pending');
+
+        if (! $user || ! $user->trashed() || $user->role !== UserRole::CUSTOMER) {
+            return back()->withErrors(['email' => 'Không tìm thấy tài khoản đã được xóa mềm với email này.']);
+        }
+
+        if (! $user->is_active) {
+            return back()->withErrors(['email' => 'Tài khoản đang bị khóa và không thể gửi yêu cầu khôi phục.']);
+        }
+
+        $pending = AccountRecoveryRequest::query()
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['pending_otp', 'pending_approval'])
+            ->latest('id')
+            ->first();
+
+        if ($pending?->status === 'pending_approval') {
+            // Người dùng quay lại nhập Email sau khi đã xác thực OTP:
+            // giữ nguyên yêu cầu và đưa họ thẳng về trang chờ phê duyệt.
+            $request->session()->put('account_recovery_request_id', $pending->id);
+
+            return to_route('account.recovery.pending')->with('status', 'recovery-pending');
+        }
+
+        // Có OTP đang chờ hoặc OTP cũ đã hết hạn: tạo một yêu cầu OTP mới.
+        // AccountRecoveryService sẽ hủy yêu cầu OTP đang chờ trước đó,
+        // sau đó phát sinh OTP mới và gửi lại cho khách hàng.
         $recovery = $service->createOtpRequest($user, 'email');
         $request->session()->put('account_recovery_request_id', $recovery->id);
+
         return to_route('account.recovery.verify')->with('status', 'recovery-otp-sent');
     }
 
@@ -35,37 +58,72 @@ class AccountRecoveryRequestController extends Controller
         $recovery = $this->sessionRecovery($request);
         if (! $recovery || $recovery->status !== 'pending_otp' || $recovery->otpExpired()) {
             $request->session()->forget('account_recovery_request_id');
+
             return to_route('account.recovery')->withErrors(['email' => 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.']);
         }
-        return Inertia::render('auth/AccountRecoveryVerify', ['email' => $this->maskEmail($recovery->email), 'expiresAt' => $recovery->otp_expires_at->toISOString(), 'remainingAttempts' => max(0, 5 - $recovery->otp_attempts), 'status' => session('status')]);
+
+        return Inertia::render('auth/AccountRecoveryVerify', [
+            'email' => $this->maskEmail($recovery->email),
+            'expiresAt' => $recovery->otp_expires_at->toISOString(),
+            'remainingAttempts' => max(0, 5 - $recovery->otp_attempts),
+            'status' => session('status'),
+        ]);
     }
 
     public function verify(Request $request, AccountRecoveryService $service): RedirectResponse
     {
         $recovery = $this->sessionRecovery($request);
-        if (! $recovery) return to_route('account.recovery');
+        if (! $recovery) {
+            return to_route('account.recovery');
+        }
+
         $data = $request->validate(['code' => ['required', 'digits:6']]);
-        if ($recovery->otpExpired()) return to_route('account.recovery')->withErrors(['email' => 'Mã OTP đã hết hạn.']);
-        if ($recovery->otp_attempts >= 5) return to_route('account.recovery')->withErrors(['email' => 'Bạn đã nhập sai OTP quá số lần cho phép.']);
+
+        if ($recovery->otpExpired()) {
+            $request->session()->forget('account_recovery_request_id');
+
+            return to_route('account.recovery')->withErrors(['email' => 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.']);
+        }
+
+        if ($recovery->otp_attempts >= 5) {
+            $request->session()->forget('account_recovery_request_id');
+
+            return to_route('account.recovery')->withErrors(['email' => 'Bạn đã nhập sai OTP quá số lần cho phép. Vui lòng yêu cầu mã mới.']);
+        }
+
         if (! $service->verifyOtp($recovery, $data['code'])) {
             $fresh = $recovery->fresh();
+
             return back()->withErrors(['code' => 'Mã OTP không chính xác. Bạn còn '.max(0, 5 - (int) $fresh->otp_attempts).' lần thử.']);
         }
+
         return to_route('account.recovery.pending')->with('status', 'recovery-submitted');
     }
 
     public function pending(Request $request): Response|RedirectResponse
     {
         $recovery = $this->sessionRecovery($request);
-        if (! $recovery || $recovery->status !== 'pending_approval') return to_route('account.recovery');
-        return Inertia::render('auth/AccountRecoveryPending', ['name' => $recovery->user?->name, 'email' => $recovery->email, 'method' => $recovery->method, 'status' => session('status')]);
+        if (! $recovery || $recovery->status !== 'pending_approval') {
+            return to_route('account.recovery');
+        }
+
+        return Inertia::render('auth/AccountRecoveryPending', [
+            'name' => $recovery->user?->name,
+            'email' => $recovery->email,
+            'method' => $recovery->method,
+            'status' => session('status'),
+        ]);
     }
 
     public function requestGoogle(Request $request, User $user, AccountRecoveryService $service): JsonResponse
     {
-        if (! $user->trashed() || $user->role !== UserRole::CUSTOMER || ! $user->is_active) return response()->json(['ok' => false], 422);
+        if (! $user->trashed() || $user->role !== UserRole::CUSTOMER || ! $user->is_active) {
+            return response()->json(['ok' => false], 422);
+        }
+
         $recovery = $service->createOtpRequest($user, 'google');
         $request->session()->put('account_recovery_request_id', $recovery->id);
+
         return response()->json(['ok' => true, 'redirect' => route('account.recovery.pending')]);
     }
 
@@ -73,7 +131,16 @@ class AccountRecoveryRequestController extends Controller
     {
         $this->authorizeReviewer($request);
         $requests = AccountRecoveryRequest::query()->with(['user:id,name,email,google_id,deleted_at', 'approver:id,name,role'])->latest()->paginate(20)->withQueryString();
-        return Inertia::render('admin/AccountRecoveryRequests', ['requests' => $requests, 'summary' => ['pending' => AccountRecoveryRequest::where('status', 'pending_approval')->count(), 'approved' => AccountRecoveryRequest::where('status', 'approved')->count(), 'rejected' => AccountRecoveryRequest::where('status', 'rejected')->count(), 'restored' => AccountRecoveryRequest::where('status', 'restored')->count()]]);
+
+        return Inertia::render('admin/AccountRecoveryRequests', [
+            'requests' => $requests,
+            'summary' => [
+                'pending' => AccountRecoveryRequest::where('status', 'pending_approval')->count(),
+                'approved' => AccountRecoveryRequest::where('status', 'approved')->count(),
+                'rejected' => AccountRecoveryRequest::where('status', 'rejected')->count(),
+                'restored' => AccountRecoveryRequest::where('status', 'restored')->count(),
+            ],
+        ]);
     }
 
     public function approve(Request $request, AccountRecoveryRequest $recovery): RedirectResponse
@@ -87,6 +154,7 @@ class AccountRecoveryRequestController extends Controller
             $user->forceFill(['is_active' => true])->save();
             $recovery->update(['status' => 'restored', 'approved_by_user_id' => $request->user()->id, 'approved_at' => now()]);
         });
+
         return back()->with('success', 'Đã phê duyệt và khôi phục tài khoản khách hàng.');
     }
 
@@ -96,12 +164,14 @@ class AccountRecoveryRequestController extends Controller
         abort_unless($recovery->status === 'pending_approval', 422, 'Yêu cầu này đã được xử lý.');
         $data = $request->validate(['review_note' => ['required', 'string', 'max:2000']]);
         $recovery->update(['status' => 'rejected', 'rejected_by_user_id' => $request->user()->id, 'rejected_at' => now(), 'review_note' => $data['review_note']]);
+
         return back()->with('success', 'Đã từ chối yêu cầu khôi phục tài khoản.');
     }
 
     private function sessionRecovery(Request $request): ?AccountRecoveryRequest
     {
         $id = $request->session()->get('account_recovery_request_id');
+
         return $id ? AccountRecoveryRequest::query()->with('user')->find($id) : null;
     }
 
@@ -113,7 +183,10 @@ class AccountRecoveryRequestController extends Controller
     private function maskEmail(string $email): string
     {
         [$local, $domain] = array_pad(explode('@', $email, 2), 2, '');
-        if ($local === '' || $domain === '') return $email;
+        if ($local === '' || $domain === '') {
+            return $email;
+        }
+
         return substr($local, 0, min(2, strlen($local))).str_repeat('*', max(2, strlen($local) - 2)).'@'.$domain;
     }
 }

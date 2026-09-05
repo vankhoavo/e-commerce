@@ -51,6 +51,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('/account-deletion-requests/{deletionRequest}/approve', [AccountDeletionRequestController::class, 'approve'])->middleware('admin.permission:customers')->name('account-deletion-requests.approve');
     Route::patch('/account-deletion-requests/{deletionRequest}/reject', [AccountDeletionRequestController::class, 'reject'])->middleware('admin.permission:customers')->name('account-deletion-requests.reject');
     Route::get('/ip-check', [IpCheckController::class, 'index'])->name('ip-check');
+    Route::post('/ip-check/lookup', [IpCheckController::class, 'lookup'])->middleware('throttle:30,1')->name('ip-check.lookup');
 });
 
 Route::middleware(['auth', 'root.admin'])->prefix('admin')->name('admin.security.')->group(function (): void {

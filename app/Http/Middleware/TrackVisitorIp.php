@@ -4,14 +4,21 @@ namespace App\Http\Middleware;
 
 use App\Enums\UserRole;
 use App\Models\IpAccessLog;
+use App\Services\IpGeolocationService;
+use App\Support\ClientIpResolver;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 class TrackVisitorIp
 {
+    public function __construct(
+        private readonly ClientIpResolver $clientIpResolver,
+        private readonly IpGeolocationService $ipGeolocation,
+    ) {
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
@@ -34,46 +41,22 @@ class TrackVisitorIp
 
     private function record(Request $request, int $userId): void
     {
-        $ip = $request->ip();
-        if (! filter_var($ip, FILTER_VALIDATE_IP)) {
+        $ip = $this->clientIpResolver->resolve($request);
+
+        if (! $ip) {
             return;
         }
 
         $version = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? 6 : 4;
         $agent = (string) $request->userAgent();
         $parsed = $this->parseUserAgent($agent);
-        $ipwho = [];
-        $ipinfo = [];
-        $ptr = null;
 
-        try {
-            $ipwho = Http::timeout(2)->acceptJson()->get("https://ipwho.is/{$ip}")->json();
-        } catch (\Throwable $e) {
-            Log::debug('IP lookup ipwho.is failed', ['ip' => $ip, 'error' => $e->getMessage()]);
-        }
+        // Keep the visitor request fast. IP enrichment is best effort and
+        // runs here only when an IP record is first created for the session.
+        $geo = $this->ipGeolocation->lookup($ip);
 
-        try {
-            $ipinfo = Http::timeout(2)->acceptJson()->get("https://ipinfo.io/{$ip}/json")->json();
-        } catch (\Throwable $e) {
-            Log::debug('IP lookup ipinfo failed', ['ip' => $ip, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            $dns = Http::timeout(2)->acceptJson()->get('https://dns.google/resolve', ['name' => $this->ptrName($ip), 'type' => 'PTR'])->json();
-            $ptr = data_get($dns, 'Answer.0.data');
-        } catch (\Throwable $e) {
-            Log::debug('IP PTR lookup failed', ['ip' => $ip, 'error' => $e->getMessage()]);
-        }
-
-        $country = data_get($ipwho, 'country') ?: data_get($ipinfo, 'country');
-        $countryCode = data_get($ipwho, 'country_code') ?: data_get($ipinfo, 'country');
-        $city = data_get($ipwho, 'city') ?: data_get($ipinfo, 'city');
-        $region = data_get($ipwho, 'region') ?: data_get($ipinfo, 'region');
-        $continent = data_get($ipwho, 'continent');
-        $org = data_get($ipwho, 'connection.org') ?: data_get($ipinfo, 'org');
-        $asn = data_get($ipwho, 'connection.asn');
-        $ipType = data_get($ipwho, 'type') ?: ($version === 6 ? 'IPv6' : 'IPv4');
-        $mobile = (bool) (data_get($ipwho, 'connection.type') === 'mobile' || data_get($ipwho, 'is_mobile') || $parsed['device'] === 'Phone');
+        $ipType = $geo['type'] ?: ($version === 6 ? 'IPv6' : 'IPv4');
+        $mobile = (bool) ($geo['is_mobile'] || $parsed['device'] === 'Phone');
 
         IpAccessLog::create([
             'user_id' => $userId,
@@ -81,39 +64,24 @@ class TrackVisitorIp
             'ip_version' => $version,
             'ip_type' => $ipType,
             'ipv6' => $version === 6 ? $ip : null,
-            'organization' => $org,
-            'asn' => $asn ? 'AS'.$asn : data_get($ipinfo, 'org'),
-            'city' => $city,
-            'region' => $region,
-            'country' => $country,
-            'country_code' => $countryCode,
-            'continent' => $continent,
+            'organization' => $geo['organization'],
+            'asn' => $geo['asn'],
+            'city' => $geo['city'],
+            'region' => $geo['region'],
+            'country' => $geo['country'],
+            'country_code' => $geo['country_code'],
+            'continent' => $geo['continent'],
             'device' => $parsed['device'],
             'browser' => $parsed['browser'],
             'operating_system' => $parsed['os'],
             'user_agent' => $agent,
-            'ptr' => $ptr,
-            'is_proxy' => data_get($ipwho, 'security.proxy'),
-            'is_vpn' => data_get($ipwho, 'security.vpn'),
-            'is_tor' => data_get($ipwho, 'security.tor'),
+            'ptr' => $geo['hostname'],
+            'is_proxy' => $geo['is_proxy'],
+            'is_vpn' => $geo['is_vpn'],
+            'is_tor' => $geo['is_tor'],
             'is_mobile' => $mobile,
-            'metadata' => [
-                'ipinfo_hostname' => data_get($ipinfo, 'hostname'),
-                'ipinfo_org' => data_get($ipinfo, 'org'),
-                'ipinfo_loc' => data_get($ipinfo, 'loc'),
-                'ipinfo_timezone' => data_get($ipinfo, 'timezone'),
-                'sources' => ['IPinfo', 'ipwho.is', 'Google DNS PTR'],
-            ],
+            'metadata' => $geo['metadata'],
         ]);
-    }
-
-    private function ptrName(string $ip): string
-    {
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-            return implode('.', array_reverse(str_split(str_replace(':', '', inet_pton($ip) ? bin2hex(inet_pton($ip)) : ''), 1))) . '.ip6.arpa';
-        }
-
-        return implode('.', array_reverse(explode('.', $ip))) . '.in-addr.arpa';
     }
 
     private function parseUserAgent(string $agent): array

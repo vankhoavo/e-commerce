@@ -3,14 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\IpAccessLog;
+use App\Services\IpGeolocationService;
+use App\Support\ClientIpResolver;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class IpCheckController extends Controller
 {
+    public function __construct(
+        private readonly ClientIpResolver $clientIpResolver,
+        private readonly IpGeolocationService $ipGeolocation,
+    ) {
+    }
+
     public function index(Request $request): Response
     {
         $base = IpAccessLog::query()->whereNotNull('user_id');
@@ -60,7 +66,7 @@ class IpCheckController extends Controller
                 'ipv6' => (clone $base)->where('ip_version', 6)->count(),
                 'devices' => (clone $base)->whereNotNull('device')->where('device', '!=', 'Unknown')->distinct()->count('device'),
             ],
-            'currentIp' => $request->ip(),
+            'currentIp' => $this->clientIpResolver->resolve($request),
         ]);
     }
 
@@ -68,36 +74,22 @@ class IpCheckController extends Controller
     {
         $data = $request->validate(['ip' => ['required', 'ip']]);
         $ip = $data['ip'];
-        $ipwho = [];
-        $ipinfo = [];
-        $ptr = null;
-
-        try {
-            $ipwho = Http::timeout(4)->acceptJson()->get("https://ipwho.is/{$ip}")->json();
-        } catch (\Throwable $e) {
-            Log::debug('IP lookup failed', ['ip' => $ip, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            $ipinfo = Http::timeout(4)->acceptJson()->get("https://ipinfo.io/{$ip}/json")->json();
-        } catch (\Throwable $e) {
-            Log::debug('IPinfo lookup failed', ['ip' => $ip, 'error' => $e->getMessage()]);
-        }
+        $geo = $this->ipGeolocation->lookup($ip);
 
         return Inertia::render('admin/IpCheck', [
             'lookup' => [
                 'ip' => $ip,
-                'organization' => data_get($ipwho, 'connection.org') ?: data_get($ipinfo, 'org'),
-                'asn' => data_get($ipwho, 'connection.asn') ? 'AS'.data_get($ipwho, 'connection.asn') : null,
-                'city' => data_get($ipwho, 'city') ?: data_get($ipinfo, 'city'),
-                'region' => data_get($ipwho, 'region') ?: data_get($ipinfo, 'region'),
-                'country' => data_get($ipwho, 'country') ?: data_get($ipinfo, 'country'),
-                'country_code' => data_get($ipwho, 'country_code') ?: data_get($ipinfo, 'country'),
-                'continent' => data_get($ipwho, 'continent'),
-                'type' => data_get($ipwho, 'type'),
-                'hostname' => data_get($ipinfo, 'hostname'),
-                'ptr' => $ptr,
-                'security' => data_get($ipwho, 'security'),
+                'organization' => $geo['organization'],
+                'asn' => $geo['asn'],
+                'city' => $geo['city'],
+                'region' => $geo['region'],
+                'country' => $geo['country'],
+                'country_code' => $geo['country_code'],
+                'continent' => $geo['continent'],
+                'type' => $geo['type'],
+                'hostname' => $geo['hostname'],
+                'ptr' => $geo['hostname'],
+                'security' => $geo['security'],
             ],
         ]);
     }

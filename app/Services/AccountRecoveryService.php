@@ -6,11 +6,15 @@ use App\Jobs\SendEmailOtpJob;
 use App\Models\AccountRecoveryRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 class AccountRecoveryService
 {
-    public const OTP_TTL_SECONDS = 300;
+    public const OTP_TTL_SECONDS = 60;
+    public const MAX_SENDS = 5;
+    public const SEND_COOLDOWN_SECONDS = 60;
+    public const SEND_LOCKOUT_SECONDS = 3600;
 
     public function createOtpRequest(User $user, string $method): AccountRecoveryRequest
     {
@@ -36,7 +40,7 @@ class AccountRecoveryService
                 email: $request->email,
                 code: $code,
                 subject: 'Mã OTP khôi phục tài khoản - TechStore',
-                message: "Mã OTP khôi phục tài khoản TechStore của bạn là: {$code}\n\nMã có hiệu lực trong 5 phút. Không chia sẻ mã này với bất kỳ ai.",
+                message: "Mã OTP khôi phục tài khoản TechStore của bạn là: {$code}\n\nMã có hiệu lực trong 1 phút. Không chia sẻ mã này cho bất kỳ ai.",
                 type: 'account_recovery',
             );
         }
@@ -60,5 +64,25 @@ class AccountRecoveryService
         ])->save();
 
         return true;
+    }
+
+    public function sendKey(string $purpose, string $email, ?string $ip = null): string
+    {
+        return 'otp-send:'.$purpose.':'.sha1(Str::lower(trim($email)).'|'.($ip ?? ''));
+    }
+
+    public function availableSendDelay(string $purpose, string $email, ?string $ip = null): int
+    {
+        return RateLimiter::availableIn($this->sendKey($purpose, $email, $ip));
+    }
+
+    public function canSend(string $purpose, string $email, ?string $ip = null): bool
+    {
+        return ! RateLimiter::tooManyAttempts($this->sendKey($purpose, $email, $ip), self::MAX_SENDS);
+    }
+
+    public function registerSend(string $purpose, string $email, ?string $ip = null): void
+    {
+        RateLimiter::hit($this->sendKey($purpose, $email, $ip), self::SEND_LOCKOUT_SECONDS);
     }
 }

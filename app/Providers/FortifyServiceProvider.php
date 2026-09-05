@@ -48,18 +48,18 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request): ?User {
             $identifier = Str::lower(trim($request->string('email')->toString()));
             $password = $request->string('password')->toString();
-
-            // Email quản trị cũ bị loại bỏ vĩnh viễn.
             if ($identifier === 'admin@techstore.local') return null;
 
             if ($identifier === 'admin') {
-                $user = User::query()
-                    ->where('role', UserRole::ADMIN->value)
-                    ->where('is_active', true)
-                    ->whereRaw('LOWER(name) = ?', ['admin'])
-                    ->first();
+                $user = User::query()->where('role', UserRole::ADMIN->value)->where('is_active', true)->whereRaw('LOWER(name) = ?', ['admin'])->first();
             } else {
                 $user = User::query()->whereRaw('LOWER(email) = ?', [$identifier])->first();
+                if (! $user) {
+                    $deletedUser = User::withTrashed()->whereRaw('LOWER(email) = ?', [$identifier])->first();
+                    if ($deletedUser?->trashed() && $deletedUser->role === UserRole::CUSTOMER && $deletedUser->is_active) {
+                        $request->session()->flash('status', 'Tài khoản này đã được xóa mềm. Bạn có thể gửi yêu cầu khôi phục tài khoản để đăng nhập lại.');
+                    }
+                }
             }
 
             if (!$user || !$user->is_active) return null;

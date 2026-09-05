@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountRecoveryRequestController;
 use App\Http\Controllers\Auth\EmailPasswordResetController;
 use App\Http\Controllers\Auth\EmailVerificationOtpController;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -24,6 +25,11 @@ Route::get('/auth/google/check-email', [GoogleAuthController::class, 'checkEmail
 Route::get('/auth/check-email', [GoogleAuthController::class, 'checkEmail'])->middleware(['guest','throttle:100,1'])->name('auth.check-email');
 
 Route::middleware('guest')->group(function (): void {
+    Route::get('/account/recovery', [AccountRecoveryRequestController::class, 'showVerify'])->name('account.recovery.verify');
+    Route::get('/account/recovery/start', fn () => Inertia::render('auth/AccountRecovery'))->name('account.recovery');
+    Route::post('/account/recovery/email', [AccountRecoveryRequestController::class, 'requestEmail'])->middleware('throttle:5,10')->name('account.recovery.email');
+    Route::post('/account/recovery/verify', [AccountRecoveryRequestController::class, 'verify'])->middleware('throttle:10,5')->name('account.recovery.verify.submit');
+    Route::get('/account/recovery/pending', [AccountRecoveryRequestController::class, 'pending'])->name('account.recovery.pending');
     Route::get('/forgot-password', [EmailPasswordResetController::class, 'showRequest'])->name('password.email.request');
     Route::post('/forgot-password', [EmailPasswordResetController::class, 'requestCode'])->middleware('throttle:3,5')->name('password.email.send');
     Route::get('/forgot-password/verify', [EmailPasswordResetController::class, 'showVerify'])->name('password.email.verify');

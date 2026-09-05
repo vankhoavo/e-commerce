@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import { login } from '@/routes';
+import { computed } from 'vue';
+
+const page = usePage();
+const resendAvailableIn = computed(() => Number((page.props as any).resendAvailableIn ?? 0));
+const resendLocked = computed(() => Boolean((page.props as any).resendLocked ?? false));
 
 defineOptions({
     layout: {
@@ -50,7 +55,12 @@ defineProps<{ status?: string }>();
 
         <div class="forgot-note">
             <i class="bi bi-clock-history" />
-            <span>Mã OTP có hiệu lực trong 1 phút 30 giây. Kiểm tra cả thư mục Spam hoặc Quảng cáo nếu chưa thấy Email.</span>
+            <span>Mã OTP có hiệu lực trong 1 phút. Mỗi Email chỉ được gửi tối đa 5 mã. Từ lần thứ 6, vui lòng quay lại sau 60 phút.</span>
+        </div>
+
+        <div v-if="resendLocked" class="forgot-note warning">
+            <i class="bi bi-hourglass-split" />
+            <span>Đã đạt giới hạn 5 lần gửi OTP. Vui lòng quay lại sau 60 phút.</span>
         </div>
 
         <div class="forgot-back">
@@ -76,7 +86,9 @@ defineProps<{ status?: string }>();
 .forgot-submit{display:flex;align-items:center;justify-content:center;gap:7px;height:43px;border:0;border-radius:10px;color:#fff;background:linear-gradient(135deg,#2563eb,#4f46e5);box-shadow:0 8px 18px rgba(37,99,235,.18);font-size:11px;font-weight:850;cursor:pointer}
 .forgot-submit:disabled{opacity:.6;cursor:not-allowed}
 .forgot-note{display:flex;align-items:flex-start;gap:7px;margin-top:15px;padding:10px;border-radius:9px;color:#667085;background:#f8fafc;font-size:9px;line-height:1.5}
+.forgot-note.warning{color:#92400e;background:#fffbeb}
 .forgot-note i{color:#2563eb;margin-top:1px}
+.forgot-note.warning i{color:#d97706}
 .forgot-back{margin-top:17px;padding-top:15px;border-top:1px solid #edf0f4;text-align:center}
 .forgot-back a{color:#2563eb;font-size:10px;font-weight:800;text-decoration:none}
 </style>

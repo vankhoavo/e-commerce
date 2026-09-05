@@ -9,6 +9,8 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class OrderController extends Controller
@@ -95,7 +97,7 @@ class OrderController extends Controller
                 $paypal = $this->paypalOrder($data['paypal_order_id']);
                 $this->assertPaypalOrderMatchesTotal($paypal, $calculatedTotal);
             } catch (\Throwable $exception) {
-                \Illuminate\Support\Facades\Log::warning('PayPal order verification failed.', ['paypal_order_id' => $data['paypal_order_id'], 'error' => $exception->getMessage()]);
+                Log::warning('PayPal order verification failed.', ['paypal_order_id' => $data['paypal_order_id'], 'error' => $exception->getMessage()]);
                 return response()->json(['message' => $exception->getMessage() ?: 'Không thể xác minh giao dịch PayPal Sandbox.'], 422);
             }
         }
@@ -141,17 +143,7 @@ class OrderController extends Controller
         });
 
         $recipient = $order->customer_email ?: $request->user()->email;
-        if ($order->payment === 'cod') {
-            SendOrderReceivedEmailJob::dispatch($order->id, $recipient);
-        } else {
-            dispatch(function () use ($order, $recipient): void {
-                try {
-                    \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\OrderReceivedMail($order));
-                } catch (\Throwable $exception) {
-                    \Illuminate\Support\Facades\Log::warning('Không thể gửi Email xác nhận đơn hàng.', ['order_id' => $order->id, 'recipient' => $recipient, 'error' => $exception->getMessage()]);
-                }
-            })->afterResponse();
-        }
+        SendOrderReceivedEmailJob::dispatch($order->id, $recipient);
 
         return response()->json(['order' => $this->transform($order)], 201);
     }

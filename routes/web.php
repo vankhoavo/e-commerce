@@ -31,18 +31,18 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/account/recovery/verify', [AccountRecoveryRequestController::class, 'verify'])->middleware('throttle:10,5')->name('account.recovery.verify.submit');
     Route::get('/account/recovery/pending', [AccountRecoveryRequestController::class, 'pending'])->name('account.recovery.pending');
     Route::get('/forgot-password', [EmailPasswordResetController::class, 'showRequest'])->name('password.email.request');
-    Route::post('/forgot-password', [EmailPasswordResetController::class, 'requestCode'])->middleware('throttle:3,5')->name('password.email.send');
+    Route::post('/forgot-password', [EmailPasswordResetController::class, 'requestCode'])->middleware('throttle:5,1')->name('password.email.send');
     Route::get('/forgot-password/verify', [EmailPasswordResetController::class, 'showVerify'])->name('password.email.verify');
-    Route::post('/forgot-password/verify', [EmailPasswordResetController::class, 'verifyCode'])->middleware('throttle:6,1')->name('password.email.verify.submit');
-    Route::post('/forgot-password/verify/resend', [EmailPasswordResetController::class, 'resendCode'])->middleware('throttle:3,5')->name('password.email.verify.resend');
+    Route::post('/forgot-password/verify', [EmailPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,5')->name('password.email.verify.submit');
+    Route::post('/forgot-password/verify/resend', [EmailPasswordResetController::class, 'resendCode'])->middleware('throttle:5,1')->name('password.email.verify.resend');
     Route::get('/forgot-password/reset', [EmailPasswordResetController::class, 'showReset'])->name('password.email.reset');
-    Route::post('/forgot-password/reset', [EmailPasswordResetController::class, 'resetPassword'])->middleware('throttle:6,1')->name('password.email.reset.submit');
+    Route::post('/forgot-password/reset', [EmailPasswordResetController::class, 'resetPassword'])->middleware('throttle:10,5')->name('password.email.reset.submit');
 });
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/verify-email-otp', [EmailVerificationOtpController::class, 'show'])->name('email-verify-otp.show');
-    Route::post('/verify-email-otp', [EmailVerificationOtpController::class, 'verify'])->middleware('throttle:6,1')->name('email-verify-otp.verify');
-    Route::post('/verify-email-otp/resend', [EmailVerificationOtpController::class, 'resend'])->middleware('throttle:3,1')->name('email-verify-otp.resend');
+    Route::post('/verify-email-otp', [EmailVerificationOtpController::class, 'verify'])->middleware('throttle:10,5')->name('email-verify-otp.verify');
+    Route::post('/verify-email-otp/resend', [EmailVerificationOtpController::class, 'resend'])->middleware('throttle:5,1')->name('email-verify-otp.resend');
     Route::post('/verify-email-otp/defer', [EmailVerificationOtpController::class, 'defer'])->name('email-verify-otp.defer');
     Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->middleware('throttle:10,1')->name('paypal.orders.create');
     Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->middleware('throttle:10,1')->name('paypal.orders.capture');

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TechStore">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#g)"/>
+  <rect x="38" y="38" width="52" height="52" rx="10" fill="#fff"/>
+  <rect x="48" y="48" width="32" height="32" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="4"/>
+  <path d="M54 31v12M64 31v12M74 31v12M54 85v12M64 85v12M74 85v12M31 54h12M31 64h12M31 74h12M85 54h12M85 64h12M85 74h12" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M58 58h12v12H58z" fill="#2563eb"/>
+</svg>

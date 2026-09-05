@@ -1,0 +1,61 @@
+/* VAT invoice checkout enhancements. Keep markup unchanged. */
+.checkout-card:has(input[type="checkbox"]) input[type="checkbox"] {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 44px !important;
+    height: 24px !important;
+    flex: 0 0 44px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background-color: #d0d5dd !important;
+    background-image: radial-gradient(circle at 12px 12px, #ffffff 0 8px, transparent 8.5px) !important;
+    box-shadow: inset 0 0 0 1px rgba(16, 24, 40, .08), 0 1px 2px rgba(16, 24, 40, .08) !important;
+    cursor: pointer !important;
+    transition: background-color .18s ease, background-image .18s ease, box-shadow .18s ease !important;
+}
+
+.checkout-card:has(input[type="checkbox"]) input[type="checkbox"]:checked {
+    background-color: #2563eb !important;
+    background-image: radial-gradient(circle at 32px 12px, #ffffff 0 8px, transparent 8.5px) !important;
+    box-shadow: inset 0 0 0 1px rgba(29, 78, 216, .35), 0 4px 10px rgba(37, 99, 235, .2) !important;
+}
+
+.checkout-card:has(input[type="checkbox"]) input[type="checkbox"]:focus,
+.checkout-card:has(input[type="checkbox"]) input[type="checkbox"]:focus-visible {
+    outline: 0 !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12), inset 0 0 0 1px rgba(37, 99, 235, .25) !important;
+}
+
+.checkout-card:has(input[type="checkbox"]) div:has(> input[type="checkbox"]) {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+.checkout-card:has(input[type="checkbox"]) div:has(> input[type="checkbox"]) > label {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    display: block !important;
+    width: auto !important;
+    max-height: 24px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    white-space: normal !important;
+}
+
+/* The invoice form should stay clean: keep only the field labels and controls. */
+.checkout-card:has(input[type="checkbox"]) .form-text,
+.checkout-card:has(input[type="checkbox"]) .text-muted,
+.checkout-card:has(input[type="checkbox"]) .vat-hint,
+.checkout-card:has(input[type="checkbox"]) .invoice-hint,
+.checkout-card:has(input[type="checkbox"]) small {
+    display: none !important;
+}
+
+.checkout-card:has(input[type="checkbox"]) input[type="text"],
+.checkout-card:has(input[type="checkbox"]) input[type="email"],
+.checkout-card:has(input[type="checkbox"]) textarea {
+    width: 100%;
+}

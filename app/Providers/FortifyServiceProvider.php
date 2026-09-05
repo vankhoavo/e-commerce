@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Providers;
+
+use App\Actions\Fortify\CreateNewUser;
+use App\Enums\UserRole;
+use App\Http\Responses\LoginResponse;
+use App\Http\Responses\PasskeyLoginResponse;
+use App\Http\Responses\TechStoreRegisterResponse;
+use App\Http\Responses\TwoFactorLoginResponse;
+use App\Http\Responses\VerifyEmailResponse;
+use App\Models\User;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
+use Illuminate\Support\ServiceProvider;
+use Inertia\Inertia;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
+use Laravel\Fortify\Contracts\VerifyEmailResponse as VerifyEmailResponseContract;
+use Laravel\Fortify\Fortify;
+use Laravel\Passkeys\Contracts\PasskeyLoginResponse as PasskeyLoginResponseContract;
+
+class FortifyServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(PasskeyLoginResponseContract::class, PasskeyLoginResponse::class);
+        $this->app->singleton(RegisterResponseContract::class, TechStoreRegisterResponse::class);
+        $this->app->singleton(TwoFactorLoginResponseContract::class, TwoFactorLoginResponse::class);
+        $this->app->singleton(VerifyEmailResponseContract::class, VerifyEmailResponse::class);
+    }
+
+    public function boot(): void
+    {
+        $this->configureActions();
+        $this->configureViews();
+        $this->configureRateLimiting();
+    }
+
+    private function configureActions(): void
+    {
+        Fortify::createUsersUsing(CreateNewUser::class);
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $identifier = Str::lower(trim($request->string('email')->toString()));
+            $password = $request->string('password')->toString();
+
+            // Email quản trị cũ bị loại bỏ vĩnh viễn.
+            if ($identifier === 'admin@techstore.local') return null;
+
+            if ($identifier === 'admin') {
+                $user = User::query()
+                    ->where('role', UserRole::ADMIN->value)
+                    ->where('is_active', true)
+                    ->whereRaw('LOWER(name) = ?', ['admin'])
+                    ->first();
+            } else {
+                $user = User::query()->whereRaw('LOWER(email) = ?', [$identifier])->first();
+            }
+
+            if (!$user || !$user->is_active) return null;
+            return Hash::check($password, $user->password) ? $user : null;
+        });
+    }
+
+    private function configureViews(): void
+    {
+        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', ['status' => $request->session()->get('status')]));
+        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/VerifyEmail', ['status' => $request->session()->get('status')]));
+        Fortify::registerView(fn () => Inertia::render('auth/Register', ['passwordRules' => 'minlength: 8;']));
+        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
+        Fortify::confirmPasswordView(fn () => Inertia::render('auth/ConfirmPassword'));
+    }
+
+    private function configureRateLimiting(): void
+    {
+        RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')));
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip())));
+        RateLimiter::for('passkeys', fn (Request $request) => Limit::perMinute(10)->by(($request->input('credential.id') ?: $request->session()->getId()).'|'.$request->ip()));
+    }
+}

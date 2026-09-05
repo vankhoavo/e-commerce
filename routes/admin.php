@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountDeletionRequestController;
+use App\Http\Controllers\AccountRecoveryRequestController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdministratorController;
 use App\Http\Controllers\AdministratorSecurityController;
@@ -70,6 +71,9 @@ Route::middleware(['auth', 'backoffice'])->prefix('admin')->name('admin.')->grou
     Route::patch('/employees/{user}/toggle', [EmployeeController::class, 'toggle'])->name('employees.toggle');
     Route::patch('/employees/{user}/approve', [EmployeeController::class, 'approve'])->name('employees.approve');
     Route::patch('/employees/{user}/reject', [EmployeeController::class, 'reject'])->name('employees.reject');
+    Route::get('/account-recovery-requests', [AccountRecoveryRequestController::class, 'index'])->name('account-recovery-requests');
+    Route::patch('/account-recovery-requests/{recovery}/approve', [AccountRecoveryRequestController::class, 'approve'])->name('account-recovery-requests.approve');
+    Route::patch('/account-recovery-requests/{recovery}/reject', [AccountRecoveryRequestController::class, 'reject'])->name('account-recovery-requests.reject');
 });
 
 Route::middleware('auth')->group(function (): void {

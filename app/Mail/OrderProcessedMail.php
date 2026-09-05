@@ -16,7 +16,7 @@ class OrderProcessedMail extends Mailable implements ShouldQueue
 
     public function __construct(public Order $order)
     {
-        $this->onQueue('emails');
+        $this->onQueue('default');
     }
 
     public function envelope(): Envelope

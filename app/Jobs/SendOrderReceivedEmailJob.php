@@ -28,22 +28,53 @@ class SendOrderReceivedEmailJob implements ShouldQueue
 
     public function handle(): void
     {
+        Log::info('EMAIL_ORDER_JOB: started.', [
+            'order_id' => $this->orderId,
+            'recipient' => $this->recipient,
+            'queue' => $this->queue,
+        ]);
+
         $order = Order::query()->with('items')->find($this->orderId);
 
         if (! $order) {
+            Log::warning('EMAIL_ORDER_JOB: order not found.', [
+                'order_id' => $this->orderId,
+            ]);
             return;
         }
 
         try {
-            Mail::to($this->recipient)->send(new OrderReceivedMail($order));
-        } catch (\Throwable $exception) {
-            Log::warning('Không thể gửi Email xác nhận đơn hàng.', [
+            Log::info('EMAIL_ORDER_JOB: sending SMTP email.', [
                 'order_id' => $order->id,
                 'recipient' => $this->recipient,
+            ]);
+
+            Mail::to($this->recipient)->send(new OrderReceivedMail($order));
+
+            Log::info('EMAIL_ORDER_JOB: SMTP send completed.', [
+                'order_id' => $order->id,
+                'recipient' => $this->recipient,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('EMAIL_ORDER_JOB: SMTP send failed.', [
+                'order_id' => $order->id,
+                'recipient' => $this->recipient,
+                'exception' => get_class($exception),
                 'error' => $exception->getMessage(),
+                'attempt' => $this->attempts(),
             ]);
 
             throw $exception;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('EMAIL_ORDER_JOB: permanently failed.', [
+            'order_id' => $this->orderId,
+            'recipient' => $this->recipient,
+            'exception' => get_class($exception),
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

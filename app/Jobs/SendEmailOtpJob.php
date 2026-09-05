@@ -44,12 +44,29 @@ class SendEmailOtpJob implements ShouldQueue
                 : EmailVerificationCode::query()->whereKey($this->recordId)->where('user_id', $this->userId)->where('email', $this->email)->whereNull('verified_at')->first();
         }
 
-        if (! $record || $record->expired()) return;
+        if (! $record) {
+            return;
+        }
 
+        // AccountRecoveryRequest dùng otpExpired(), còn các loại OTP cũ dùng expired().
+        if ($this->type === 'account_recovery') {
+            if ($record->otpExpired()) {
+                return;
+            }
+        } elseif ($record->expired()) {
+            return;
+        }
+
+        // Tài khoản khôi phục đã Soft Delete vẫn phải được phép gửi OTP.
         $userQuery = User::query();
-        if ($this->type === 'account_recovery') $userQuery->withTrashed();
-        $user = $userQuery->whereKey($this->userId)->where('is_active', true)->first();
-        if (! $user) return;
+        if ($this->type === 'account_recovery') {
+            $userQuery->withTrashed();
+        }
+
+        $user = $userQuery->whereKey($this->userId)->first();
+        if (! $user || ! $user->is_active) {
+            return;
+        }
 
         Mail::raw($this->message, function ($mail): void {
             $mail->to($this->email)->subject($this->subject);

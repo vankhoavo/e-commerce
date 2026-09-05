@@ -21,20 +21,10 @@ class AccountRecoveryRequestController extends Controller
         $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
         $email = Str::lower(trim($data['email']));
         $user = User::withTrashed()->whereRaw('LOWER(email) = ?', [$email])->first();
-
-        if (! $user || ! $user->trashed() || $user->role !== UserRole::CUSTOMER) {
-            return back()->withErrors(['email' => 'Không tìm thấy tài khoản đã được xóa mềm với email này.']);
-        }
-        if (! $user->is_active) {
-            return back()->withErrors(['email' => 'Tài khoản đang bị khóa và không thể gửi yêu cầu khôi phục.']);
-        }
-
-        $pending = AccountRecoveryRequest::query()
-            ->where('user_id', $user->id)
-            ->whereIn('status', ['pending_otp', 'pending_approval'])
-            ->exists();
+        if (! $user || ! $user->trashed() || $user->role !== UserRole::CUSTOMER) return back()->withErrors(['email' => 'Không tìm thấy tài khoản đã được xóa mềm với email này.']);
+        if (! $user->is_active) return back()->withErrors(['email' => 'Tài khoản đang bị khóa và không thể gửi yêu cầu khôi phục.']);
+        $pending = AccountRecoveryRequest::query()->where('user_id', $user->id)->whereIn('status', ['pending_otp', 'pending_approval'])->exists();
         if ($pending) return back()->with('status', 'recovery-pending');
-
         $recovery = $service->createOtpRequest($user, 'email');
         $request->session()->put('account_recovery_request_id', $recovery->id);
         return to_route('account.recovery.verify')->with('status', 'recovery-otp-sent');
@@ -47,12 +37,7 @@ class AccountRecoveryRequestController extends Controller
             $request->session()->forget('account_recovery_request_id');
             return to_route('account.recovery')->withErrors(['email' => 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.']);
         }
-        return Inertia::render('auth/AccountRecoveryVerify', [
-            'email' => $this->maskEmail($recovery->email),
-            'expiresAt' => $recovery->otp_expires_at->toISOString(),
-            'remainingAttempts' => max(0, 5 - $recovery->otp_attempts),
-            'status' => session('status'),
-        ]);
+        return Inertia::render('auth/AccountRecoveryVerify', ['email' => $this->maskEmail($recovery->email), 'expiresAt' => $recovery->otp_expires_at->toISOString(), 'remainingAttempts' => max(0, 5 - $recovery->otp_attempts), 'status' => session('status')]);
     }
 
     public function verify(Request $request, AccountRecoveryService $service): RedirectResponse
@@ -73,19 +58,12 @@ class AccountRecoveryRequestController extends Controller
     {
         $recovery = $this->sessionRecovery($request);
         if (! $recovery || $recovery->status !== 'pending_approval') return to_route('account.recovery');
-        return Inertia::render('auth/AccountRecoveryPending', [
-            'name' => $recovery->user?->name,
-            'email' => $recovery->email,
-            'method' => $recovery->method,
-            'status' => session('status'),
-        ]);
+        return Inertia::render('auth/AccountRecoveryPending', ['name' => $recovery->user?->name, 'email' => $recovery->email, 'method' => $recovery->method, 'status' => session('status')]);
     }
 
     public function requestGoogle(Request $request, User $user, AccountRecoveryService $service): JsonResponse
     {
-        if (! $user->trashed() || $user->role !== UserRole::CUSTOMER || ! $user->is_active) {
-            return response()->json(['ok' => false], 422);
-        }
+        if (! $user->trashed() || $user->role !== UserRole::CUSTOMER || ! $user->is_active) return response()->json(['ok' => false], 422);
         $recovery = $service->createOtpRequest($user, 'google');
         $request->session()->put('account_recovery_request_id', $recovery->id);
         return response()->json(['ok' => true, 'redirect' => route('account.recovery.pending')]);
@@ -94,27 +72,17 @@ class AccountRecoveryRequestController extends Controller
     public function index(Request $request): Response
     {
         $this->authorizeReviewer($request);
-        $requests = AccountRecoveryRequest::query()->with(['user:id,name,email,google_id,deleted_at', 'approver:id,name,role'])
-            ->latest()->paginate(20)->withQueryString();
-        return Inertia::render('admin/AccountRecoveryRequests', [
-            'requests' => $requests,
-            'summary' => [
-                'pending' => AccountRecoveryRequest::where('status', 'pending_approval')->count(),
-                'approved' => AccountRecoveryRequest::where('status', 'approved')->count(),
-                'rejected' => AccountRecoveryRequest::where('status', 'rejected')->count(),
-                'restored' => AccountRecoveryRequest::where('status', 'restored')->count(),
-            ],
-        ]);
+        $requests = AccountRecoveryRequest::query()->with(['user:id,name,email,google_id,deleted_at', 'approver:id,name,role'])->latest()->paginate(20)->withQueryString();
+        return Inertia::render('admin/AccountRecoveryRequests', ['requests' => $requests, 'summary' => ['pending' => AccountRecoveryRequest::where('status', 'pending_approval')->count(), 'approved' => AccountRecoveryRequest::where('status', 'approved')->count(), 'rejected' => AccountRecoveryRequest::where('status', 'rejected')->count(), 'restored' => AccountRecoveryRequest::where('status', 'restored')->count()]]);
     }
 
     public function approve(Request $request, AccountRecoveryRequest $recovery): RedirectResponse
     {
         $this->authorizeReviewer($request);
         abort_unless($recovery->status === 'pending_approval', 422, 'Yêu cầu này đã được xử lý.');
-        $user = $recovery->user()->withTrashed()->lockForUpdate()->first();
-        abort_unless($user && $user->trashed(), 422, 'Tài khoản không còn ở trạng thái xóa mềm.');
-
-        DB::transaction(function () use ($recovery, $user, $request): void {
+        DB::transaction(function () use ($recovery, $request): void {
+            $user = $recovery->user()->withTrashed()->lockForUpdate()->first();
+            abort_unless($user && $user->trashed(), 422, 'Tài khoản không còn ở trạng thái xóa mềm.');
             $user->restore();
             $user->forceFill(['is_active' => true])->save();
             $recovery->update(['status' => 'restored', 'approved_by_user_id' => $request->user()->id, 'approved_at' => now()]);

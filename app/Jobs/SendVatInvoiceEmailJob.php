@@ -27,22 +27,26 @@ class SendVatInvoiceEmailJob implements ShouldQueue
 
     public function handle(): void
     {
-        $order = Order::query()->with('items')->find($this->orderId);
+        Log::info('EMAIL_VAT_JOB: started.', ['order_id' => $this->orderId, 'recipient' => $this->recipient, 'queue' => $this->queue]);
 
+        $order = Order::query()->with('items')->find($this->orderId);
         if (! $order) {
+            Log::warning('EMAIL_VAT_JOB: order not found.', ['order_id' => $this->orderId]);
             return;
         }
 
         try {
+            Log::info('EMAIL_VAT_JOB: sending SMTP email.', ['order_id' => $order->id, 'recipient' => $this->recipient]);
             Mail::to($this->recipient)->send(new VatInvoiceMail($order));
+            Log::info('EMAIL_VAT_JOB: SMTP send completed.', ['order_id' => $order->id, 'recipient' => $this->recipient]);
         } catch (\Throwable $exception) {
-            Log::warning('Không thể gửi Email hóa đơn VAT.', [
-                'order_id' => $order->id,
-                'recipient' => $this->recipient,
-                'error' => $exception->getMessage(),
-            ]);
-
+            Log::error('EMAIL_VAT_JOB: SMTP send failed.', ['order_id' => $order->id, 'recipient' => $this->recipient, 'exception' => get_class($exception), 'error' => $exception->getMessage(), 'attempt' => $this->attempts()]);
             throw $exception;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('EMAIL_VAT_JOB: permanently failed.', ['order_id' => $this->orderId, 'recipient' => $this->recipient, 'exception' => get_class($exception), 'error' => $exception->getMessage()]);
     }
 }

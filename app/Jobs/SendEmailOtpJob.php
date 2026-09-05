@@ -48,16 +48,7 @@ class SendEmailOtpJob implements ShouldQueue
             return;
         }
 
-        // AccountRecoveryRequest dùng otpExpired(), còn các loại OTP cũ dùng expired().
-        if ($this->type === 'account_recovery') {
-            if ($record->otpExpired()) {
-                return;
-            }
-        } elseif ($record->expired()) {
-            return;
-        }
-
-        // Tài khoản khôi phục đã Soft Delete vẫn phải được phép gửi OTP.
+        // OTP chỉ hết hiệu lực khi xác minh; Job không được hủy gửi chỉ vì TTL OTP đã hết.
         $userQuery = User::query();
         if ($this->type === 'account_recovery') {
             $userQuery->withTrashed();

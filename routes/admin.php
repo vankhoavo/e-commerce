@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountDeletionRequestController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdministratorController;
+use App\Http\Controllers\AdministratorSecurityController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InventoryController;
@@ -49,6 +50,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('/account-deletion-requests/{deletionRequest}/approve', [AccountDeletionRequestController::class, 'approve'])->middleware('admin.permission:customers')->name('account-deletion-requests.approve');
     Route::patch('/account-deletion-requests/{deletionRequest}/reject', [AccountDeletionRequestController::class, 'reject'])->middleware('admin.permission:customers')->name('account-deletion-requests.reject');
     Route::get('/ip-check', [IpCheckController::class, 'index'])->name('ip-check');
+});
+
+Route::middleware(['auth', 'root.admin'])->prefix('admin')->name('admin.security.')->group(function (): void {
+    Route::get('/administrator/password/forgot', [AdministratorSecurityController::class, 'showPasswordReset'])->name('password.request');
+    Route::get('/administrator/password/verify', [AdministratorSecurityController::class, 'showPasswordVerify'])->name('password.verify');
+    Route::post('/administrator/password/verify', [AdministratorSecurityController::class, 'verifyPassword'])->middleware('throttle:6,1')->name('password.verify.submit');
+    Route::get('/administrator/password/reset', [AdministratorSecurityController::class, 'showPasswordForm'])->name('password.reset');
+    Route::post('/administrator/password/reset', [AdministratorSecurityController::class, 'resetPassword'])->middleware('throttle:6,1')->name('password.reset.submit');
+    Route::get('/administrator/email/edit', [AdministratorSecurityController::class, 'editEmail'])->name('email.edit');
+    Route::patch('/administrator/email', [AdministratorSecurityController::class, 'updateEmail'])->middleware('throttle:6,1')->name('email.update');
 });
 
 Route::middleware(['auth', 'backoffice'])->prefix('admin')->name('admin.')->group(function (): void {

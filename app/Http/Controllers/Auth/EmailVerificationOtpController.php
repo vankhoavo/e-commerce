@@ -8,13 +8,18 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class EmailVerificationOtpController
 {
-    private const MAX_ATTEMPTS = 3;
+    private const MAX_ATTEMPTS = 5;
+    private const MAX_SENDS = 5;
+    private const SEND_COOLDOWN_SECONDS = 60;
+    private const SEND_LOCKOUT_SECONDS = 3600;
 
     public function show(Request $request): Response|RedirectResponse
     {
@@ -51,6 +56,8 @@ class EmailVerificationOtpController
             'hasPendingCode' => ! $record->expired(),
             'remainingAttempts' => max(0, self::MAX_ATTEMPTS - $record->attempts),
             'registrationPending' => (bool) $user->registration_pending,
+            'resendAvailableIn' => $this->resendAvailableIn($user->email, $request->ip(), $record),
+            'resendLocked' => $this->resendLocked($user->email, $request->ip()),
         ]);
     }
 
@@ -82,21 +89,20 @@ class EmailVerificationOtpController
             ->first();
 
         if (! $record || $record->expired()) {
-            return back()->withErrors(['code' => 'Mã xác thực không hợp lệ hoặc đã hết hạn. Vui lòng gửi mã mới.']);
+            return back()->withErrors(['code' => 'Mã xác thực không hợp lệ hoặc đã hết hạn. Vui lòng chờ mã hết hạn rồi gửi mã mới.']);
         }
 
         if ($record->attempts >= self::MAX_ATTEMPTS) {
-            $this->lockUser($user, $record);
-            return to_route('login')->withErrors(['email' => 'Tài khoản đã bị khóa do nhập sai mã OTP quá số lần cho phép.']);
+            return $this->lockUser($user, $record);
         }
 
         if (! Hash::check($data['code'], $record->code)) {
             $record->increment('attempts');
-            $attempts = $record->fresh()->attempts;
+            $attempts = (int) $record->fresh()->attempts;
 
             if ($attempts >= self::MAX_ATTEMPTS) {
                 $this->lockUser($user, $record);
-                return to_route('login')->withErrors(['email' => 'Tài khoản đã bị khóa do nhập sai mã OTP 3 lần.']);
+                return to_route('login')->withErrors(['email' => 'Tài khoản đã bị khóa do nhập sai mã OTP quá 5 lần.']);
             }
 
             return back()->withErrors(['code' => "Mã xác thực không chính xác. Bạn còn ".(self::MAX_ATTEMPTS - $attempts)." lần thử."]);
@@ -129,16 +135,35 @@ class EmailVerificationOtpController
             return to_route('profile.edit');
         }
 
+        $record = EmailVerificationCode::query()
+            ->where('user_id', $user->id)
+            ->where('email', $user->email)
+            ->whereNull('verified_at')
+            ->latest()
+            ->first();
+
+        if ($record && ! $record->expired()) {
+            $remaining = max(1, now()->diffInSeconds($record->expires_at, false));
+            return back()->withErrors(['code' => "Mã OTP hiện tại chưa hết hạn. Vui lòng chờ {$remaining} giây rồi mới yêu cầu mã mới."]);
+        }
+
+        $key = $this->sendKey($user->email, $request->ip());
+        if (RateLimiter::tooManyAttempts($key, self::MAX_SENDS)) {
+            $remaining = RateLimiter::availableIn($key);
+            return back()->withErrors(['code' => 'Bạn đã yêu cầu gửi lại OTP 5 lần. Vui lòng quay lại sau '.ceil($remaining / 60).' phút.']);
+        }
+
         try {
-            $record = $otp->send($user, $user->email);
+            $code = $otp->send($user, $user->email);
+            RateLimiter::hit($key, self::SEND_LOCKOUT_SECONDS);
         } catch (\Throwable $exception) {
             report($exception);
-            return back()->withErrors(['code' => 'Không thể gửi mã OTP lúc này. Vui lòng kiểm tra cấu hình email và thử lại sau.']);
+            return back()->withErrors(['code' => 'Không thể gửi mã OTP lúc này. Vui lòng kiểm tra cấu hình Email và thử lại sau.']);
         }
 
         return back()
             ->with('status', 'verification-code-sent')
-            ->with('otp_expires_at', $record->expires_at->toISOString());
+            ->with('otp_expires_at', $code->expires_at->toISOString());
     }
 
     public function defer(Request $request): RedirectResponse
@@ -169,7 +194,7 @@ class EmailVerificationOtpController
         return to_route('profile.edit')->with('status', 'email-verification-deferred');
     }
 
-    private function lockUser($user, ?EmailVerificationCode $record = null): void
+    private function lockUser($user, ?EmailVerificationCode $record = null): RedirectResponse
     {
         DB::transaction(function () use ($user, $record): void {
             $user->forceFill(['is_active' => false])->save();
@@ -177,5 +202,26 @@ class EmailVerificationOtpController
                 $record->delete();
             }
         });
+
+        return to_route('login')->withErrors(['email' => 'Tài khoản đã bị khóa do nhập sai mã OTP quá 5 lần. Quản trị viên hoặc trợ lý quản trị viên đã được thông báo để phê duyệt mở khóa.']);
+    }
+
+    private function sendKey(string $email, string $ip): string
+    {
+        return 'otp-send:email-verification:'.sha1(Str::lower(trim($email)).'|'.$ip);
+    }
+
+    private function resendAvailableIn(string $email, string $ip, ?EmailVerificationCode $record): int
+    {
+        if ($record && ! $record->expired()) {
+            return max(0, now()->diffInSeconds($record->expires_at, false));
+        }
+
+        return RateLimiter::availableIn($this->sendKey($email, $ip));
+    }
+
+    private function resendLocked(string $email, string $ip): bool
+    {
+        return RateLimiter::tooManyAttempts($this->sendKey($email, $ip), self::MAX_SENDS);
     }
 }

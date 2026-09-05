@@ -39,7 +39,7 @@ class NotifyPasswordResetLockJob implements ShouldQueue
         }
 
         $subject = 'Cảnh báo khóa tài khoản do OTP khôi phục mật khẩu - TechStore';
-        $message = "Tài khoản khách hàng đã bị khóa do nhập sai mã OTP khôi phục mật khẩu 3 lần.\n\n"
+        $message = "Tài khoản khách hàng đã bị khóa do nhập sai mã OTP khôi phục mật khẩu 5 lần.\n\n"
             ."Khách hàng: {$this->lockedUserName}\n"
             ."Email: {$this->lockedUserEmail}\n"
             ."User ID: {$this->lockedUserId}\n\n"

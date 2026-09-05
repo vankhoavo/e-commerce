@@ -20,7 +20,7 @@ class NotifyPasswordResetLockJob implements ShouldQueue
         public readonly string $lockedUserName,
         public readonly string $lockedUserEmail,
     ) {
-        $this->onQueue('emails');
+        $this->onQueue('default');
     }
 
     public function handle(): void

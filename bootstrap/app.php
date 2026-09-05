@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\EnsureBackoffice;
+use App\Http\Middleware\EnsureRootAdministrator;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RedirectAdminsToBackoffice;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureAdmin::class,
             'admin.permission' => EnsureAdminPermission::class,
             'backoffice' => EnsureBackoffice::class,
+            'root.admin' => EnsureRootAdministrator::class,
         ]);
 
         $middleware->web(append: [

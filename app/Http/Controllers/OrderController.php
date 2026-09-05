@@ -143,7 +143,17 @@ class OrderController extends Controller
         });
 
         $recipient = $order->customer_email ?: $request->user()->email;
+        Log::info('EMAIL_ORDER_DISPATCH: preparing confirmation email job.', [
+            'order_id' => $order->id,
+            'recipient' => $recipient,
+            'queue' => 'default',
+        ]);
         SendOrderReceivedEmailJob::dispatch($order->id, $recipient);
+        Log::info('EMAIL_ORDER_DISPATCH: confirmation email job dispatched.', [
+            'order_id' => $order->id,
+            'recipient' => $recipient,
+            'queue' => 'default',
+        ]);
 
         return response()->json(['order' => $this->transform($order)], 201);
     }

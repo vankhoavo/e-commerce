@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 
 class EmailOtpService
 {
-    private const OTP_TTL_MINUTES = 1;
+    public const OTP_TTL_MINUTES = 1;
 
     public function send(User $user, string $email): EmailVerificationCode
     {
@@ -25,7 +25,7 @@ class EmailOtpService
             'user_id' => $user->id,
             'email' => $email,
             'code' => Hash::make($code),
-            'expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES),
+            'expires_at' => now()->addMinute(),
             'attempts' => 0,
         ]);
 
@@ -35,7 +35,7 @@ class EmailOtpService
             email: $email,
             code: $code,
             subject: 'Mã xác thực Email - TechStore',
-            message: "Mã xác thực TechStore của bạn là: {$code}\n\nMã có hiệu lực trong 1 phút. Không chia sẻ mã này với bất kỳ ai.",
+            message: "Mã xác thực TechStore của bạn là: {$code}\n\nMã có hiệu lực trong 1 phút. Không chia sẻ mã này cho bất kỳ ai.",
         );
 
         return $record;

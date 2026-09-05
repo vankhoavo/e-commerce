@@ -1,0 +1,11 @@
+<script setup lang="ts">
+import { Form, Head, Link } from '@inertiajs/vue3';
+const props = defineProps<{ email: string; expiresAt: string; remainingAttempts: number; status?: string }>();
+</script>
+<template>
+<Head title="Xác minh khôi phục tài khoản"/>
+<div class="page"><div class="card"><div class="icon"><i class="bi bi-shield-lock"/></div><h1>Xác minh email</h1><p>Mã OTP đã được gửi đến <strong>{{ props.email }}</strong>.</p><div class="notice">Sau khi xác minh OTP, yêu cầu vẫn phải được Quản trị viên hoặc Nhân viên cấp cao phê duyệt trước khi tài khoản được khôi phục.</div><Form action="/account/recovery/verify" method="post" v-slot="{errors,processing}" class="vstack gap-3"><div><label>Mã OTP</label><input name="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required placeholder="Nhập 6 chữ số"/><div v-if="errors.code" class="error">{{ errors.code }}</div></div><button :disabled="processing" type="submit">{{ processing ? 'Đang xác minh...' : 'Xác minh OTP' }}</button></Form><div class="back"><Link href="/account/recovery/start">Yêu cầu mã mới</Link><span> · </span><Link href="/login">Đăng nhập</Link></div></div></div>
+</template>
+<style scoped>
+.page{min-height:70vh;display:grid;place-items:center;padding:32px 16px}.card{width:min(430px,100%);padding:30px;border:1px solid #e5e9f0;border-radius:22px;background:#fff;box-shadow:0 16px 45px rgba(16,24,40,.08)}.icon{display:grid;width:54px;height:54px;place-items:center;margin:0 auto 16px;border-radius:16px;background:#eff6ff;color:#2563eb;font-size:24px}.card h1{text-align:center;font-size:1.5rem;font-weight:900}.card p{text-align:center;color:#667085;font-size:.78rem}.notice{margin:14px 0;padding:11px 12px;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;color:#1e40af;font-size:.7rem;line-height:1.55}.card label{display:block;margin-bottom:6px;font-size:.72rem;font-weight:800}.card input{width:100%;padding:11px 12px;border:1px solid #d0d5dd;border-radius:10px;font-size:.9rem;letter-spacing:.18em;text-align:center}.card button{padding:11px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800}.card button:disabled{opacity:.6}.error{margin-top:6px;color:#b42318;font-size:.68rem}.back{text-align:center;margin-top:18px;font-size:.7rem}.back a{color:#2563eb;text-decoration:none}
+</style>

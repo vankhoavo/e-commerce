@@ -22,7 +22,8 @@ class SendOrderReceivedEmailJob implements ShouldQueue
         public readonly int $orderId,
         public readonly string $recipient,
     ) {
-        $this->onQueue('emails');
+        // Laravel Cloud currently provides the Managed Queue as `default`.
+        $this->onQueue('default');
     }
 
     public function handle(): void

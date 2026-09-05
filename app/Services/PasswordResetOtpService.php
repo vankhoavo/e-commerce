@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 
 class PasswordResetOtpService
 {
-    private const OTP_TTL_SECONDS = 90;
+    public const OTP_TTL_SECONDS = 60;
 
     public function send(User $user): PasswordResetCode
     {
@@ -34,7 +34,7 @@ class PasswordResetOtpService
             email: $resetCode->email,
             code: $code,
             subject: 'Mã OTP khôi phục mật khẩu - TechStore',
-            message: "Mã OTP khôi phục mật khẩu TechStore của bạn là: {$code}\n\nMã có hiệu lực trong 1 phút 30 giây. Không chia sẻ mã này với bất kỳ ai.",
+            message: "Mã OTP khôi phục mật khẩu TechStore của bạn là: {$code}\n\nMã có hiệu lực trong 1 phút. Không chia sẻ mã này cho bất kỳ ai.",
             type: 'password_reset',
         );
 

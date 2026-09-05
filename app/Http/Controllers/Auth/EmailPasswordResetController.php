@@ -20,7 +20,10 @@ class EmailPasswordResetController
 {
     use PasswordValidationRules;
 
-    private const MAX_ATTEMPTS = 3;
+    private const MAX_ATTEMPTS = 5;
+    private const MAX_SENDS = 5;
+    private const SEND_LOCKOUT_SECONDS = 3600;
+    private const SEND_COOLDOWN_SECONDS = 60;
 
     public function showRequest(Request $request, PasswordResetOtpService $otp): Response|RedirectResponse
     {
@@ -33,28 +36,7 @@ class EmailPasswordResetController
                 ]);
             }
 
-            $email = Str::lower(trim((string) $user->email));
-            $key = 'password-reset:'.sha1($email.'|'.$request->ip());
-            if (RateLimiter::tooManyAttempts($key, 3)) {
-                return to_route('profile.edit', ['section' => 'security'])->withErrors([
-                    'password' => 'Bạn đã yêu cầu quá nhiều mã OTP. Vui lòng thử lại sau '.RateLimiter::availableIn($key).' giây.',
-                ]);
-            }
-
-            RateLimiter::hit($key, 300);
-            $this->clearSession($request);
-
-            try {
-                $code = $otp->send($user);
-            } catch (\Throwable $exception) {
-                report($exception);
-                return to_route('profile.edit', ['section' => 'security'])->withErrors([
-                    'password' => 'Không thể gửi mã OTP lúc này. Vui lòng kiểm tra cấu hình Email.',
-                ]);
-            }
-
-            $this->storeResetSession($request, $user, $code->id);
-            return to_route('security.password.verify')->with('status', 'Mã OTP đã được gửi đến email của bạn.');
+            return $this->sendForUser($request, $otp, $user, true);
         }
 
         return Inertia::render('auth/ForgotPassword', ['status' => session('status')]);
@@ -64,13 +46,11 @@ class EmailPasswordResetController
     {
         $validated = $request->validate(['email' => ['required', 'string', 'email', 'max:255']]);
         $email = Str::lower(trim($validated['email']));
-        $this->clearSession($request);
 
-        $key = 'password-reset:'.sha1($email.'|'.$request->ip());
-        if (RateLimiter::tooManyAttempts($key, 3)) {
-            return back()->withErrors(['email' => 'Vui lòng thử lại sau '.RateLimiter::availableIn($key).' giây.']);
+        $key = $this->sendKey($email, $request->ip());
+        if (RateLimiter::tooManyAttempts($key, self::MAX_SENDS)) {
+            return back()->withErrors(['email' => 'Bạn đã yêu cầu gửi OTP 5 lần. Vui lòng quay lại sau 60 phút.']);
         }
-        RateLimiter::hit($key, 300);
 
         $user = User::query()
             ->whereRaw('LOWER(email) = ?', [$email])
@@ -81,8 +61,20 @@ class EmailPasswordResetController
             return back()->with('status', 'Nếu email tồn tại, mã OTP đã được gửi. Vui lòng kiểm tra hộp thư và thư mục Spam.');
         }
 
+        $pending = PasswordResetCode::query()
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->latest()
+            ->first();
+
+        if ($pending && ! $pending->expired()) {
+            $remaining = max(1, now()->diffInSeconds($pending->expires_at, false));
+            return back()->withErrors(['email' => "Mã OTP hiện tại chưa hết hạn. Vui lòng chờ {$remaining} giây rồi mới yêu cầu mã mới."]);
+        }
+
         try {
             $code = $otp->send($user);
+            RateLimiter::hit($key, self::SEND_LOCKOUT_SECONDS);
         } catch (\Throwable $exception) {
             report($exception);
             return back()->withErrors(['email' => 'Không thể gửi mã OTP lúc này. Vui lòng kiểm tra cấu hình Email.']);
@@ -106,6 +98,8 @@ class EmailPasswordResetController
             'status' => session('status'),
             'expiresAt' => $code->expires_at->toISOString(),
             'remainingAttempts' => max(0, self::MAX_ATTEMPTS - $code->attempts),
+            'resendAvailableIn' => $this->resendAvailableIn($code->email, $request->ip(), $code),
+            'resendLocked' => RateLimiter::tooManyAttempts($this->sendKey($code->email, $request->ip()), self::MAX_SENDS),
         ]);
     }
 
@@ -149,15 +143,27 @@ class EmailPasswordResetController
             return to_route('security.password.request');
         }
 
-        try {
-            $code = $otp->send($user);
-        } catch (\Throwable $exception) {
-            report($exception);
-            return back()->withErrors(['code' => 'Không thể gửi lại mã OTP lúc này. Vui lòng thử lại sau.']);
+        $code = $this->pendingCode($request);
+        if ($code && ! $code->expired()) {
+            $remaining = max(1, now()->diffInSeconds($code->expires_at, false));
+            return back()->withErrors(['code' => "Mã OTP hiện tại chưa hết hạn. Vui lòng chờ {$remaining} giây rồi mới yêu cầu mã mới."]);
         }
 
-        $this->storeResetSession($request, $user, $code->id);
-        return back()->with('status', 'otp-resent')->with('otp_expires_at', $code->expires_at->toISOString());
+        $key = $this->sendKey($user->email, $request->ip());
+        if (RateLimiter::tooManyAttempts($key, self::MAX_SENDS)) {
+            return back()->withErrors(['code' => 'Bạn đã yêu cầu gửi OTP 5 lần. Vui lòng quay lại sau 60 phút.']);
+        }
+
+        try {
+            $newCode = $otp->send($user);
+            RateLimiter::hit($key, self::SEND_LOCKOUT_SECONDS);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return back()->withErrors(['code' => 'Không thể gửi lại mã OTP lúc này. Vui lòng kiểm tra cấu hình Email.']);
+        }
+
+        $this->storeResetSession($request, $user, $newCode->id);
+        return back()->with('status', 'otp-resent')->with('otp_expires_at', $newCode->expires_at->toISOString());
     }
 
     public function showReset(Request $request): Response|RedirectResponse
@@ -200,6 +206,42 @@ class EmailPasswordResetController
         $this->clearSession($request);
 
         return to_route('login')->with('status', 'Mật khẩu đã được đặt lại thành công. Bạn có thể đăng nhập bằng mật khẩu mới.');
+    }
+
+    private function sendForUser(Request $request, PasswordResetOtpService $otp, User $user, bool $fromAuthenticatedContext): RedirectResponse
+    {
+        $key = $this->sendKey($user->email, $request->ip());
+        if (RateLimiter::tooManyAttempts($key, self::MAX_SENDS)) {
+            return to_route('profile.edit', ['section' => 'security'])->withErrors([
+                'password' => 'Bạn đã yêu cầu gửi OTP 5 lần. Vui lòng quay lại sau 60 phút.',
+            ]);
+        }
+
+        $pending = PasswordResetCode::query()
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->latest()
+            ->first();
+
+        if ($pending && ! $pending->expired()) {
+            $remaining = max(1, now()->diffInSeconds($pending->expires_at, false));
+            return to_route('security.password.request')->withErrors([
+                'email' => "Mã OTP hiện tại chưa hết hạn. Vui lòng chờ {$remaining} giây rồi mới yêu cầu mã mới.",
+            ]);
+        }
+
+        try {
+            $code = $otp->send($user);
+            RateLimiter::hit($key, self::SEND_LOCKOUT_SECONDS);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return to_route('profile.edit', ['section' => 'security'])->withErrors([
+                'password' => 'Không thể gửi mã OTP lúc này. Vui lòng kiểm tra cấu hình Email.',
+            ]);
+        }
+
+        $this->storeResetSession($request, $user, $code->id);
+        return to_route('security.password.verify')->with('status', 'Mã OTP đã được gửi đến email của bạn.');
     }
 
     private function storeResetSession(Request $request, User $user, int $codeId): void
@@ -251,12 +293,25 @@ class EmailPasswordResetController
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         }
-        return to_route('login')->withErrors(['email' => 'Tài khoản đã bị khóa do nhập sai mã OTP 3 lần. Quản trị viên hoặc trợ lý quản trị viên đã được thông báo để phê duyệt mở khóa.']);
+        return to_route('login')->withErrors(['email' => 'Tài khoản đã bị khóa do nhập sai mã OTP quá 5 lần. Quản trị viên hoặc trợ lý quản trị viên đã được thông báo để phê duyệt mở khóa.']);
     }
 
     private function clearSession(Request $request): void
     {
         $request->session()->forget(['password_reset_user_id', 'password_reset_email', 'password_reset_code_id', 'password_reset_verified']);
+    }
+
+    private function sendKey(string $email, string $ip): string
+    {
+        return 'otp-send:password-reset:'.sha1(Str::lower(trim($email)).'|'.$ip);
+    }
+
+    private function resendAvailableIn(string $email, string $ip, ?PasswordResetCode $code): int
+    {
+        if ($code && ! $code->expired()) {
+            return max(0, now()->diffInSeconds($code->expires_at, false));
+        }
+        return RateLimiter::availableIn($this->sendKey($email, $ip));
     }
 
     private function maskEmail(string $email): string

@@ -29,6 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'sidebar_state',
         ]);
 
+        // Laravel Cloud runs the application behind its edge/proxy layer.
+        // Trust the proxy chain so Request::ip() resolves the client address
+        // instead of the internal forwarding address.
+        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
+
         $middleware->alias([
             'admin' => EnsureAdmin::class,
             'admin.permission' => EnsureAdminPermission::class,
